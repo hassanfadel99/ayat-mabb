@@ -1,0 +1,16 @@
+{
+  "name": "تطبيق آيات",
+  "short_name": "آيات",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/yFY29WhK/image.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
