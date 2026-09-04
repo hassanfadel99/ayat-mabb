@@ -1,8 +1,9 @@
 /** 
  * تطبيق آيات - الملف البرمجي الكامل
+ * النسخة المحدثة (1.6) - أزرار مخصصة (فجر، ظهر، مغرب) وإشعارات خلفية
  */ 
 
-let APP_CURRENT_VERSION = 1.0; 
+let APP_CURRENT_VERSION = 1.6; 
 const versionMatch = window.location.href.match(/[?&]v=([0-9.]+)/);
 if (versionMatch && versionMatch[1]) {
     APP_CURRENT_VERSION = parseFloat(versionMatch[1]);
@@ -59,13 +60,21 @@ function executeAppUpdate() {
 }
 
 // ==========================================
-// 🌟 نظام مواقيت الصلاة (محدث بدقة الإحداثيات)
+// 🌟 نظام مواقيت الصلاة والأذان (المخصص لكل صلاة)
 // ==========================================
 let currentCityKey = localStorage.getItem('ayat_city') || 'Basra';
 let prayerTimesData = null;
 let prayerInterval = null;
+let lastScheduledPrayer = ""; // لمنع تكرار المنبه
+let lastAdhanPlayed = ""; // لمنع تكرار الأذان الداخلي
 
-// الإحداثيات الجغرافية الدقيقة لمحافظات العراق (لتطابق حسابات حقيبة المؤمن)
+// حالة الأزرار المخصصة (فجر، ظهر، مغرب)
+let adhanToggles = {
+    "الفجر": localStorage.getItem('ayat_adhan_fajr') !== 'false',
+    "الظهر": localStorage.getItem('ayat_adhan_dhuhr') !== 'false',
+    "المغرب": localStorage.getItem('ayat_adhan_maghrib') !== 'false'
+};
+
 const iraqCitiesCoords = {
     "Basra": { lat: 30.5081, lng: 47.7835 },
     "Baghdad": { lat: 33.3152, lng: 44.3661 },
@@ -89,7 +98,6 @@ const iraqCitiesCoords = {
 async function fetchPrayerTimes() {
   try {
       const coords = iraqCitiesCoords[currentCityKey] || iraqCitiesCoords["Basra"];
-      // method=0 (Shia Ithna-Ashari, Leva Institute, Qum) - المعيار الجعفري
       const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${coords.lat}&longitude=${coords.lng}&method=0`);
       const data = await res.json();
       if(data.code === 200) {
@@ -126,31 +134,49 @@ function startPrayerCountdown() {
 function calculateNextPrayer() {
   if(!prayerTimesData) return;
   const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
-  
-  const times = [
-      { name: 'الفجر', time: parseTime(prayerTimesData.Fajr) },
-      { name: 'الشروق', time: parseTime(prayerTimesData.Sunrise) },
-      { name: 'الظهر', time: parseTime(prayerTimesData.Dhuhr) },
-      { name: 'العصر', time: parseTime(prayerTimesData.Asr) },
-      { name: 'المغرب', time: parseTime(prayerTimesData.Maghrib) },
-      { name: 'العشاء', time: parseTime(prayerTimesData.Isha) }
-  ];
+  const currentHHMM = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+  const currentTimeMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
 
-  let nextPrayer = null;
-  for(let i=0; i<times.length; i++) {
-      if(times[i].time > currentTime) {
-          nextPrayer = times[i];
-          break;
+  // 1. تشغيل الأذان الداخلي (يتحقق من تفعيل كل صلاة على حدة)
+  const prayersToAlert = {
+      "الفجر": prayerTimesData.Fajr,
+      "الظهر": prayerTimesData.Dhuhr,
+      "المغرب": prayerTimesData.Maghrib
+  };
+
+  for (let [prayerName, prayerTime] of Object.entries(prayersToAlert)) {
+      if (adhanToggles[prayerName] && currentHHMM === prayerTime && lastAdhanPlayed !== prayerTime) {
+          lastAdhanPlayed = prayerTime;
+          triggerAdhanAlert(prayerName);
       }
   }
 
-  if(!nextPrayer) {
-      nextPrayer = times[0];
-      nextPrayer.time += 24 * 60; 
+  // 2. تحديث العداد التنازلي في الشاشة (ثابت دائماً ولا يتأثر بإطفاء الأذان)
+  const uiPrayers = [
+      { name: 'الفجر', timeStr: prayerTimesData.Fajr, time: parseTime(prayerTimesData.Fajr) },
+      { name: 'الظهر', timeStr: prayerTimesData.Dhuhr, time: parseTime(prayerTimesData.Dhuhr) },
+      { name: 'المغرب', timeStr: prayerTimesData.Maghrib, time: parseTime(prayerTimesData.Maghrib) }
+  ];
+
+  let nextPrayerUI = null;
+  let isTomorrowUI = false;
+  
+  for(let i=0; i<uiPrayers.length; i++) {
+      if(uiPrayers[i].time > currentTimeMins) {
+          nextPrayerUI = uiPrayers[i];
+          break;
+      }
+  }
+  
+  if(!nextPrayerUI) {
+      nextPrayerUI = uiPrayers[0];
+      isTomorrowUI = true;
   }
 
-  let diff = nextPrayer.time - currentTime; 
+  let targetTime = nextPrayerUI.time;
+  if (isTomorrowUI) targetTime += 24 * 60;
+
+  let diff = targetTime - currentTimeMins; 
   let hrs = Math.floor(diff / 60);
   let mins = Math.floor(diff % 60);
   let secs = Math.floor((diff % 1) * 60);
@@ -158,12 +184,48 @@ function calculateNextPrayer() {
   const elName = document.getElementById('next-prayer-name');
   const elCount = document.getElementById('prayer-countdown');
   
-  if(elName) elName.innerText = `الصلاة القادمة: ${nextPrayer.name}`;
+  if(elName) elName.innerText = `الصلاة القادمة: ${nextPrayerUI.name}`;
   if(elCount) {
       let timeText = `متبقي: `;
       if (hrs > 0) timeText += `${hrs}س و `;
       timeText += `${mins}د و ${secs}ث`;
       elCount.innerText = timeText;
+  }
+
+  // 3. إرسال منبه الخلفية لنظام الأندرويد (للصلوات المفعلة فقط)
+  const alarmPrayers = [];
+  if (adhanToggles["الفجر"]) alarmPrayers.push({ name: 'الفجر', timeStr: prayerTimesData.Fajr, time: parseTime(prayerTimesData.Fajr) });
+  if (adhanToggles["الظهر"]) alarmPrayers.push({ name: 'الظهر', timeStr: prayerTimesData.Dhuhr, time: parseTime(prayerTimesData.Dhuhr) });
+  if (adhanToggles["المغرب"]) alarmPrayers.push({ name: 'المغرب', timeStr: prayerTimesData.Maghrib, time: parseTime(prayerTimesData.Maghrib) });
+
+  if (alarmPrayers.length > 0) {
+      let nextAlarm = null;
+      let isTomorrowAlarm = false;
+      for(let i=0; i<alarmPrayers.length; i++) {
+          if(alarmPrayers[i].time > currentTimeMins) {
+              nextAlarm = alarmPrayers[i];
+              break;
+          }
+      }
+      if(!nextAlarm) {
+          nextAlarm = alarmPrayers[0];
+          isTomorrowAlarm = true;
+      }
+
+      if (nextAlarm.name !== lastScheduledPrayer) {
+          lastScheduledPrayer = nextAlarm.name;
+          let [h, m] = nextAlarm.timeStr.split(':');
+          let alarmDate = new Date();
+          alarmDate.setHours(parseInt(h), parseInt(m), 0, 0);
+          if (isTomorrowAlarm) {
+              alarmDate.setDate(alarmDate.getDate() + 1);
+          }
+          let timeInMillis = alarmDate.getTime();
+          
+          if (typeof AndroidBridge !== "undefined" && typeof AndroidBridge.schedulePrayerAlarm === "function") {
+              AndroidBridge.schedulePrayerAlarm(nextAlarm.name, timeInMillis);
+          }
+      }
   }
 }
 
@@ -173,6 +235,8 @@ function updateCity() {
   localStorage.setItem('ayat_city', currentCityKey);
   const cityName = select.options[select.selectedIndex].text;
   document.getElementById('current-city-name').innerText = cityName;
+  
+  lastScheduledPrayer = ""; 
   fetchPrayerTimes();
 }
 
@@ -183,8 +247,91 @@ function initPrayerSettings() {
       const cityName = select.options[select.selectedIndex].text;
       document.getElementById('current-city-name').innerText = cityName;
   }
+  
+  // تحديث شكل الأزرار عند فتح الإعدادات
+  const tFajr = document.getElementById('toggle-fajr');
+  if(tFajr) tFajr.checked = adhanToggles["الفجر"];
+  const tDhuhr = document.getElementById('toggle-dhuhr');
+  if(tDhuhr) tDhuhr.checked = adhanToggles["الظهر"];
+  const tMaghrib = document.getElementById('toggle-maghrib');
+  if(tMaghrib) tMaghrib.checked = adhanToggles["المغرب"];
 }
 
+// تحديث إعدادات الأزرار
+function updateAdhanToggles() {
+    triggerHaptic();
+    
+    const tFajr = document.getElementById('toggle-fajr');
+    const tDhuhr = document.getElementById('toggle-dhuhr');
+    const tMaghrib = document.getElementById('toggle-maghrib');
+    
+    if(tFajr) adhanToggles["الفجر"] = tFajr.checked;
+    if(tDhuhr) adhanToggles["الظهر"] = tDhuhr.checked;
+    if(tMaghrib) adhanToggles["المغرب"] = tMaghrib.checked;
+
+    localStorage.setItem('ayat_adhan_fajr', adhanToggles["الفجر"]);
+    localStorage.setItem('ayat_adhan_dhuhr', adhanToggles["الظهر"]);
+    localStorage.setItem('ayat_adhan_maghrib', adhanToggles["المغرب"]);
+
+    // إرسال أمر للأندرويد بمسح المنبهات القديمة
+    if (typeof AndroidBridge !== "undefined" && typeof AndroidBridge.cancelPrayerAlarm === "function") {
+        AndroidBridge.cancelPrayerAlarm();
+    }
+
+    lastScheduledPrayer = ""; // إجبار التطبيق على حساب المنبه من جديد
+    fetchPrayerTimes();
+    showToast("تم تحديث إعدادات الأذان بنجاح");
+}
+
+function triggerAdhanAlert(prayerName) {
+    triggerHaptic();
+    const popup = document.getElementById('adhan-alert-popup');
+    const nameEl = document.getElementById('adhan-prayer-name');
+    if (popup) popup.classList.remove('hidden-popup');
+    if (nameEl) nameEl.innerText = `لصلاة ${prayerName}`;
+
+    if (typeof quranAudioEl !== "undefined" && quranAudioEl && !quranAudioEl.paused) {
+        stopAudio();
+    }
+
+    const adhanAudio = document.getElementById('adhan-audio');
+    if (adhanAudio) {
+        adhanAudio.currentTime = 0;
+        adhanAudio.play().catch(e => console.log("المتصفح منع التشغيل التلقائي"));
+    }
+}
+
+function stopAdhan() {
+    triggerHaptic();
+    const popup = document.getElementById('adhan-alert-popup');
+    if (popup) popup.classList.add('hidden-popup');
+
+    const adhanAudio = document.getElementById('adhan-audio');
+    if (adhanAudio) {
+        adhanAudio.pause();
+        adhanAudio.currentTime = 0;
+    }
+}
+
+// دالة مؤقتة لتجربة الأذان بعد 10 ثوانٍ (للاختبار)
+function testAdhanNow() {
+    triggerHaptic();
+    showToast("أغلق التطبيق الآن! سيتم تشغيل الأذان بعد 10 ثوانٍ.");
+    
+    let timeInMillis = new Date().getTime() + 10000; 
+    
+    if (typeof AndroidBridge !== "undefined" && typeof AndroidBridge.schedulePrayerAlarm === "function") {
+        AndroidBridge.schedulePrayerAlarm("التجربة (اختبار)", timeInMillis);
+    }
+    
+    setTimeout(() => {
+        triggerAdhanAlert("التجربة (اختبار)");
+    }, 10000);
+}
+
+// ==========================================
+// باقي الأكواد الأساسية للتطبيق
+// ==========================================
 
 const i18n = { 
   ar: { 
@@ -205,8 +352,7 @@ const i18n = {
     ward_goal_title: "قراءة القرآن اليومية", ward_goal_desc: "تحديد عدد الصفحات المطلوب قراءتها يومياً", lang_title: "لغة التطبيق", 
     lang_desc: "اختر لغتك المفضلة", color_wheel_desc: "اسحب الشريط لتغيير لون الواجهة", pick_color: "اختر لون مخصص", 
     template_theme: "تخصيص قالب المظهر", manual_theme: "تخصيص لون الواجهة", layout_title: "شكل وكثافة الواجهة", layout_desc: "5 أشكال احترافية", 
-    about_desc: "تطبيق آيات هو رفيقك الرقمي لرحلة إيمانية متكاملة، يجمع بين بساطة التصميم وعمق المحتوى.", copy: "نسخ النص", close: "إغلاق", share: "مشاركة التطبيق", 
-    stories: "ستوريات قرآنية", stories_desc: "تلاوات قصيرة" 
+    copy: "نسخ النص", close: "إغلاق", share: "مشاركة التطبيق", stories: "ستوريات قرآنية", stories_desc: "تلاوات قصيرة"
   },
   en: {
     app_title: "Ayat App", app_subtitle: "A Journey in the Quran", enter_app: "Enter App",
@@ -225,8 +371,7 @@ const i18n = {
     khatma_duration: "Target Days:", khatma_daily: "Daily Target:", khatma_start: "Start",
     ward_goal_title: "Daily Quran Goal", ward_goal_desc: "Pages to read daily", lang_title: "App Language",
     template_theme: "Theme Template", manual_theme: "Custom Color", layout_title: "UI Layout",
-    about_desc: "Ayat App is your digital companion for an integrated faith journey.", copy: "Copy Text", close: "Close", share: "Share App",
-    stories: "Quran Stories", stories_desc: "Short Recitations"
+    copy: "Copy Text", close: "Close", share: "Share App", stories: "Quran Stories", stories_desc: "Short Recitations"
   },
   ku: {
     app_title: "پڕۆگرامی ئايات", app_subtitle: "گەشتێک لە قورئاندا", enter_app: "چوونە ژوورەوە",
@@ -245,8 +390,7 @@ const i18n = {
     khatma_duration: "ژمارەی ڕۆژەکان:", khatma_daily: "پێویستی ڕۆژانە:", khatma_start: "دەستپێکردن",
     ward_goal_title: "ئامانجی ڕۆژانەی قورئان", ward_goal_desc: "ژمارەی لاپەڕەکان دیاری بکە", lang_title: "زمانی پڕۆگرام",
     template_theme: "ڕووکار", manual_theme: "ڕەنگی دڵخواز", layout_title: "شێوازی ڕووکار",
-    about_desc: "پڕۆگرامی ئايات هاوڕێی دیجیتاڵیی تۆیە بۆ گەشتێکی ئیمانی.", copy: "لەبەرگرتنەوە", close: "داخستن", share: "بڵاوکردنەوە",
-    stories: "ستۆری قورئانی", stories_desc: "خوێندنەوەی کورت"
+    copy: "لەبەرگرتنەوە", close: "داخستن", share: "بڵاوکردنەوە", stories: "ستۆری قورئانی", stories_desc: "خوێندنەوەی کورت"
   },
   fa: {
     app_title: "برنامه آیات", app_subtitle: "سفری در قرآن کریم", enter_app: "ورود به برنامه",
@@ -265,8 +409,7 @@ const i18n = {
     khatma_duration: "تعداد روزها:", khatma_daily: "هدف روزانه:", khatma_start: "تایید",
     ward_goal_title: "هدف روزانه قرآن", ward_goal_desc: "تعداد صفحات تلاوت روزانه", lang_title: "زبان برنامه",
     template_theme: "پوسته", manual_theme: "رنگ دلخواه", layout_title: "چیدمان رابط کاربری",
-    about_desc: "برنامه آیات همراه دیجیتال شما در یک سفر ایمانی است.", copy: "کپی متن", close: "بستن", share: "اشتراک گذاری",
-    stories: "استوری‌های قرآنی", stories_desc: "تلاوت‌های کوتاه"
+    copy: "کپی متن", close: "بستن", share: "اشتراک گذاری", stories: "استوری‌های قرآنی", stories_desc: "تلاوت‌های کوتاه"
   }
 }; 
 
@@ -282,95 +425,7 @@ const asmaUlHusna = [
   { name: "الْعَزِيزُ", meaning: "القوي الغالب الذي لا يُقهر.", quran: "سورة آل عمران - الآية 62", ayah: "﴿وَإِنَّ اللَّهَ لَهُوَ الْعَزِيزُ الْحَكِيمُ﴾" }, 
   { name: "الْجَبَّارُ", meaning: "الذي يجبر الكسير، وتنفذ مشيئته.", quran: "سورة الحشر - الآية 23", ayah: "﴿الْعَزِيزُ الْجَبَّارُ الْمُتَكَبِّرُ﴾" }, 
   { name: "الْمُتَكَبِّرُ", meaning: "المتعالي عن صفات النقص والمخلوقين.", quran: "سورة الحشر - الآية 23", ayah: "﴿الْجَبَّارُ الْمُتَكَبِّرُ سُبْحَانَ اللَّهِ عَمَّا يُشْرِكُونَ﴾" }, 
-  { name: "الْخَالِقُ", meaning: "المبدع للأشياء والمخترع لها على غير مثال.", quran: "سورة الحشر - الآية 24", ayah: "﴿هُوَ اللَّهُ الْخَالِقُ الْبَارِئُ الْمُصَوِّرُ﴾" }, 
-  { name: "الْبَارِئُ", meaning: "الذي خلق الخلق بريئاً من التفاوت.", quran: "سورة الحشر - الآية 24", ayah: "﴿هُوَ اللَّهُ الْخَالِقُ الْبَارِئُ﴾" }, 
-  { name: "الْمُصَوِّرُ", meaning: "الذي صور جميع الموجودات ورتبها.", quran: "سورة الحشر - الآية 24", ayah: "﴿الْخَالِقُ الْبَارِئُ الْمُصَوِّرُ لَهُ الْأَسْمَاءُ الْحُسْنَى﴾" }, 
-  { name: "الْغَفَّارُ", meaning: "الذي يغفر الذنوب ويستر العيوب مراراً.", quran: "سورة ص - الآية 66", ayah: "﴿رَبُّ السَّمَاوَاتِ وَالْأَرْضِ وَمَا بَيْنَهُمَا الْعَزِيزُ الْغَفَّارُ﴾" }, 
-  { name: "الْقَهَّارُ", meaning: "الذي قهر جميع الكائنات وذلت له.", quran: "سورة الرعد - الآية 16", ayah: "﴿قُلِ اللَّهُ خَالِقُ كُلِّ شَيْءٍ وَهُوَ الْوَاحِدُ الْقَهَّارُ﴾" }, 
-  { name: "الْوَهَّابُ", meaning: "الكثير العطاء بغير عوض.", quran: "سورة آل عمران - الآية 8", ayah: "﴿إِنَّكَ أَنْتَ الْوَهَّابُ﴾" }, 
-  { name: "الرَّزَّاقُ", meaning: "المتكفل بالرزق لجميع الكائنات.", quran: "سورة الذاريات - الآية 58", ayah: "﴿إِنَّ اللَّهَ هُوَ الرَّزَّاقُ ذُو الْقُوَّةِ الْمَتِينُ﴾" }, 
-  { name: "الْفَتَّاحُ", meaning: "الذي يفتح مغاليق الأمور ويحكم بين العباد.", quran: "سورة سبأ - الآية 26", ayah: "﴿وَهُوَ الْفَتَّاحُ الْعَلِيمُ﴾" }, 
-  { name: "الْعَلِيمُ", meaning: "الذي أحاط علمه بالظواهر والبواطن.", quran: "سورة البقرة - الآية 32", ayah: "﴿إِنَّكَ أَنْتَ الْعَلِيمُ الْحَكِيمُ﴾" }, 
-  { name: "الْقَابِضُ", meaning: "الذي يقبض الأرواح والأرزاق بحكمته.", quran: "سورة البقرة - الآية 245", ayah: "﴿وَاللَّهُ يَقْبِضُ وَيَبْسُطُ وَإِلَيْهِ تُرْجَعُونَ﴾" }, 
-  { name: "الْبَاسِطُ", meaning: "الذي يبسط الرزق لمن يشاء.", quran: "سورة البقرة - الآية 245", ayah: "﴿وَاللَّهُ يَقْبِضُ وَيَبْسُطُ وَإِلَيْهِ تُرْجَعُونَ﴾" }, 
-  { name: "الْخَافِضُ", meaning: "الذي يخفض الجبابرة والمتكبرين.", quran: "سورة الواقعة - الآية 3", ayah: "﴿خَافِضَةٌ رَافِعَةٌ﴾" }, 
-  { name: "الرَّافِعُ", meaning: "الذي يرفع درجات المؤمنين.", quran: "سورة غافر - الآية 15", ayah: "﴿رَفِيعُ الدَّرَجَاتِ ذُو الْعَرْشِ﴾" }, 
-  { name: "الْمُعِزُّ", meaning: "الذي يعز من يشاء بطاعته.", quran: "سورة آل عمران - الآية 26", ayah: "﴿وَتُعِزُّ مَنْ تَشَاءُ﴾" }, 
-  { name: "الْمُذِلُّ", meaning: "الذي يذل من يشاء بمعصيته.", quran: "سورة آل عمران - الآية 26", ayah: "﴿وَتُذِلُّ مَنْ تَشَاءُ﴾" }, 
-  { name: "السَّمِيعُ", meaning: "الذي يسمع السر والنجوى.", quran: "سورة البقرة - الآية 127", ayah: "﴿وَهُوَ السَّمِيعُ الْعَلِيمُ﴾" }, 
-  { name: "الْبَصِيرُ", meaning: "الذي يرى كل شيء وإن دق.", quran: "سورة الإسراء - الآية 1", ayah: "﴿إِنَّهُ هُوَ السَّمِيعُ الْبَصِيرُ﴾" }, 
-  { name: "الْحَكَمُ", meaning: "الذي يحكم بين الخلائق بالعدل.", quran: "سورة الأنعام - الآية 114", ayah: "﴿أَفَغَيْرَ اللَّهِ أَبْتَغِي حَكَمًا﴾" }, 
-  { name: "الْعَدْلُ", meaning: "المنزه عن الظلم والجور.", quran: "سورة الأنعام - الآية 115", ayah: "﴿وَتَمَّتْ كَلِمَتُ رَبِّكَ صِدْقًا وَعَدْلًا﴾" }, 
-  { name: "اللَّطِيفُ", meaning: "البر بعباده، الخبير بدقائق الأمور.", quran: "سورة الأنعام - الآية 103", ayah: "﴿وَهُوَ اللَّطِيفُ الْخَبِيرُ﴾" }, 
-  { name: "الْخَبِيرُ", meaning: "العالم بما كان وما يكون.", quran: "سورة الأنعام - الآية 18", ayah: "﴿وَهُوَ الْحَكِيمُ الْخَبِيرُ﴾" }, 
-  { name: "الْحَلِيمُ", meaning: "الذي لا يعجل بالعقوبة على عباده.", quran: "سورة البقرة - الآية 225", ayah: "﴿وَاللَّهُ غَنِيٌّ حَلِيمٌ﴾" }, 
-  { name: "الْعَظِيمُ", meaning: "الذي ليس لعظمته بداية ولا نهاية.", quran: "سورة الشورى - الآية 4", ayah: "﴿وَهُوَ الْعَلِيُّ الْعَظِيمُ﴾" }, 
-  { name: "الْغَفُورُ", meaning: "المتجاوز عن الذنوب.", quran: "سورة طه - الآية 82", ayah: "﴿وَإِنِّي لَغَفَّارٌ لِمَنْ تَابَ وَآمَنَ وَعَمِلَ صَالِحًا﴾" }, 
-  { name: "الشَّكُورُ", meaning: "الذي يزكو عنده القليل من العمل فيضاعف الأجر.", quran: "سورة فاطر - الآية 30", ayah: "﴿إِنَّ رَبَّنَا لَغَفُورٌ شَكُورٌ﴾" }, 
-  { name: "الْعَلِيُّ", meaning: "المرتفع قدراً ومكانة.", quran: "سورة البقرة - الآية 255", ayah: "﴿وَهُوَ الْعَلِيُّ الْعَظِيمُ﴾" }, 
-  { name: "الْكَبِيرُ", meaning: "الذي صغر كل شيء دونه.", quran: "سورة الرعد - الآية 9", ayah: "﴿عَالِمُ الْغَيْبِ وَالشَّهَادَةِ الْكَبِيرُ الْمُتَعَالِ﴾" }, 
-  { name: "الْحَفِيظُ", meaning: "الذي يحفظ السماوات والأرض وما فيهما.", quran: "سورة هود - الآية 57", ayah: "﴿إِنَّ رَبِّي عَلَى كُلِّ شَيْءٍ حَفِيظٌ﴾" }, 
-  { name: "الْمُقِيتُ", meaning: "خالق الأقوات وموصلها للخلائق.", quran: "سورة النساء - الآية 85", ayah: "﴿وَكَانَ اللَّهُ عَلَى كُلِّ شَيْءٍ مُقِيتًا﴾" }, 
-  { name: "الْحَسِيبُ", meaning: "الكافي عباده جميع ما يحتاجونه.", quran: "سورة النساء - الآية 86", ayah: "﴿إِنَّ اللَّهَ كَانَ عَلَى كُلِّ شَيْءٍ حَسِيبًا﴾" }, 
-  { name: "الْجَلِيلُ", meaning: "المتصف بصفات الجلال والكبرياء.", quran: "سورة الرحمن - الآية 27", ayah: "﴿وَيَبْقَى وَجْهُ رَبِّكَ ذُو الْجَلَالِ وَالْإِكْرَامِ﴾" }, 
-  { name: "الْكَرِيمُ", meaning: "كثير الخير والعطاء.", quran: "سورة النمل - الآية 40", ayah: "﴿فَإِنَّ رَبِّي غَنِيٌّ كَرِيمٌ﴾" }, 
-  { name: "الرَّقِيبُ", meaning: "المطلع على العباد الذي لا يغفل عنهم.", quran: "سورة النساء - الآية 1", ayah: "﴿إِنَّ اللَّهَ كَانَ عَلَيْكُمْ رَقِيبًا﴾" }, 
-  { name: "الْمُجِيبُ", meaning: "الذي يجيب دعاء من دعاه.", quran: "سورة هود - الآية 61", ayah: "﴿إِنَّ رَبِّي قَرِيبٌ مُجِيبٌ﴾" }, 
-  { name: "الْوَاسِعُ", meaning: "الذي وسع رزقه ورحمته جميع خلقه.", quran: "سورة البقرة - الآية 115", ayah: "﴿إِنَّ اللَّهَ وَاسِعٌ عَلِيمٌ﴾" }, 
-  { name: "الْحَكِيمُ", meaning: "الذي يضع الأشياء في مواضعها.", quran: "سورة الأنعام - الآية 18", ayah: "﴿وَهُوَ الْحَكِيمُ الْخَبِيرُ﴾" }, 
-  { name: "الْوَدُودُ", meaning: "المحب لعباده الصالحين والمحبوب لهم.", quran: "سورة البروج - الآية 14", ayah: "﴿وَهُوَ الْغَفُورُ الْوَدُودُ﴾" }, 
-  { name: "الْمَجِيدُ", meaning: "البالغ في المجد أقصاه.", quran: "سورة هود - الآية 73", ayah: "﴿إِنَّهُ حَمِيدٌ مَجِيدٌ﴾" }, 
-  { name: "الْبَاعِثُ", meaning: "الذي يبعث الموتى يوم القيامة.", quran: "سورة الحج - الآية 7", ayah: "﴿وَأَنَّ اللَّهَ يَبْعَثُ مَنْ فِي الْقُبُورِ﴾" }, 
-  { name: "الشَّهِيدُ", meaning: "المطلع على كل شيء.", quran: "سورة آل عمران - الآية 98", ayah: "﴿وَاللَّهُ شَهِيدٌ عَلَى مَا تَعْمَلُونَ﴾" }, 
-  { name: "الْحَقُّ", meaning: "الذي لا شك في وجوده وألوهيته.", quran: "سورة طه - الآية 114", ayah: "﴿فَتَعَالَى اللَّهُ الْمَلِكُ الْحَقُّ﴾" }, 
-  { name: "الْوَكِيلُ", meaning: "الذي توكل بتدبير أمور خلقه.", quran: "سورة آل عمران - الآية 173", ayah: "﴿وَقَالُوا حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ﴾" }, 
-  { name: "الْقَوِيُّ", meaning: "صاحب القدرة التامة.", quran: "سورة الأنفال - الآية 52", ayah: "﴿إِنَّ اللَّهَ قَوِيٌّ شَدِيدُ الْعِقَابِ﴾" }, 
-  { name: "الْمَتِينُ", meaning: "الشديد القوة الذي لا يعجزه شيء.", quran: "سورة الذاريات - الآية 58", ayah: "﴿إِنَّ اللَّهَ هُوَ الرَّزَّاقُ ذُو الْقُوَّةِ الْمَتِينُ﴾" }, 
-  { name: "الْوَلِيُّ", meaning: "المتولي لأمور الخلائق والمحسن إليهم.", quran: "سورة الشورى - الآية 28", ayah: "﴿وَهُوَ الْوَلِيُّ الْحَمِيدُ﴾" }, 
-  { name: "الْحَمِيدُ", meaning: "المستحق للحمد والثنائي.", quran: "سورة البقرة - الآية 267", ayah: "﴿وَاعْلَمُوا أَنَّ اللَّهَ غَنِيٌّ حَمِيدٌ﴾" }, 
-  { name: "الْمُحْصِي", meaning: "الذي أحصى كل شيء عدداً.", quran: "سورة مريم - الآية 94", ayah: "﴿لَقَدْ أَحْصَاهُمْ وَعَدَّهُمْ عَدًّا﴾" }, 
-  { name: "الْمُبْدِئُ", meaning: "الذي أنشأ الأشياء من العدم.", quran: "سورة البروج - الآية 13", ayah: "﴿إِنَّهُ هُوَ يُبْدِئُ وَيُعِيدُ﴾" }, 
-  { name: "الْمُعِيدُ", meaning: "الذي يعيد الخلق بعد الموت.", quran: "سورة البروج - الآية 13", ayah: "﴿إِنَّهُ هُوَ يُبْدِئُ وَيُعِيدُ﴾" }, 
-  { name: "الْمُحْيِي", meaning: "الذي يحيي الموتى والأرض الميتة.", quran: "سورة الروم - الآية 50", ayah: "﴿إِنَّ ذَلِكَ لَمُحْيِي الْمَوْتَى﴾" }, 
-  { name: "الْمُمِيتُ", meaning: "الذي يسلب الحياة متى شاء.", quran: "سورة الدخان - الآية 8", ayah: "﴿لَا إِلَهَ إِلَّا هُوَ يُحْيِي وَيُمِيتُ﴾" }, 
-  { name: "الْحَيُّ", meaning: "الدائم البقاء الذي لا يموت.", quran: "سورة البقرة - الآية 255", ayah: "﴿اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ﴾" }, 
-  { name: "الْقَيُّومُ", meaning: "القائم بنفسه والمقيم لغيره.", quran: "سورة البقرة - الآية 255", ayah: "﴿اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ﴾" }, 
-  { name: "الْوَاجِدُ", meaning: "الذي لا يعوزه شيء.", quran: "سورة الضحى - الآية 3", ayah: "﴿مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَى﴾" }, 
-  { name: "الْمَاجِدُ", meaning: "عظيم الشأن والمجد.", quran: "سورة هود - الآية 73", ayah: "﴿إِنَّهُ حَمِيدٌ مَجِيدٌ﴾" }, 
-  { name: "الْوَاحِدُ", meaning: "المتفرد الذي لا شريك له.", quran: "سورة الرعد - الآية 16", ayah: "﴿وَهُوَ الْوَاحِدُ الْقَهَّارُ﴾" }, 
-  { name: "الْأَحَدُ", meaning: "الذي لا شبيه له ولا نظير.", quran: "سورة الإخلاص - الآية 1", ayah: "﴿قُلْ هُوَ اللَّهُ أَحَدٌ﴾" }, 
-  { name: "الصَّمَدُ", meaning: "السيد المقصود في الحوائج كلها.", quran: "سورة الإخلاص - الآية 2", ayah: "﴿اللَّهُ الصَّمَدُ﴾" }, 
-  { name: "الْقَادِرُ", meaning: "الذي يفعل ما يشاء بلا عجز.", quran: "سورة البقرة - الآية 148", ayah: "﴿إِنَّ اللَّهَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ﴾" }, 
-  { name: "الْمُقْتَدِرُ", meaning: "التام القدرة الذي لا يمتنع عليه شيء.", quran: "سورة الكهف - الآية 45", ayah: "﴿وَكَانَ اللَّهُ عَلَى كُلِّ شَيْءٍ مُقْتَدِرًا﴾" }, 
-  { name: "الْمُقَدِّمُ", meaning: "الذي يقدم الأشياء ويضعها في مواضعها.", quran: "سورة ق - الآية 28", ayah: "﴿مَا يُبَدَّلُ الْقَوْلُ لَدَيَّ﴾" }, 
-  { name: "الْمُؤَخِّرُ", meaning: "الذي يؤخر الأشياء بحكمته.", quran: "سورة إبراهيم - الآية 104", ayah: "﴿إِنَّمَا يُؤَخِّرُهُمْ لِيَوْمٍ تَشْخَصُ فِيهِ الْأَبْصَارُ﴾" }, 
-  { name: "الْأَوَّلُ", meaning: "الذي ليس قبله شيء.", quran: "سورة الحديد - الآية 3", ayah: "﴿هُوَ الْأَوَّلُ وَالْآخِرُ﴾" }, 
-  { name: "الْآخِرُ", meaning: "الذي ليس بعده شيء.", quran: "سورة الحديد - الآية 3", ayah: "﴿هُوَ الْأَوَّلُ وَالْآخِرُ وَالظَّاهِرُ وَالْبَاطِنُ﴾" }, 
-  { name: "الظَّاهِرُ", meaning: "الذي ليس فوقه شيء.", quran: "سورة الحديد - الآية 3", ayah: "﴿وَالظَّاهِرُ وَالْبَاطِنُ﴾" }, 
-  { name: "الْبَاطِنُ", meaning: "الذي ليس دونه شيء.", quran: "سورة الحديد - الآية 3", ayah: "﴿وَالظَّاهِرُ وَالْبَاطِنُ﴾" }, 
-  { name: "الْوَالِي", meaning: "المتصرف في الأشياء.", quran: "سورة الرعد - الآية 11", ayah: "﴿وَمَا لَهُمْ مِنْ دُونِهِ مِنْ وَالٍ﴾" }, 
-  { name: "الْمُتَعَالِي", meaning: "المرتفع عن صفات المخلوقين.", quran: "سورة الرعد - الآية 9", ayah: "﴿الْكَبِيرُ الْمُتَعَالِ﴾" }, 
-  { name: "الْبَرُّ", meaning: "العطوف المحسن إلى عباده.", quran: "سورة الطور - الآية 28", ayah: "﴿إِنَّهُ هُوَ الْبَرُّ الرَّحِيمُ﴾" }, 
-  { name: "التَّوَّابُ", meaning: "يقبل توبة عباده مراراً.", quran: "سورة البقرة - الآية 37", ayah: "﴿إِنَّهُ هُوَ التَّوَّابُ الرَّحِيمُ﴾" }, 
-  { name: "الْمُنْتَقِمُ", meaning: "الذي يعاقب المصرين على الظلم.", quran: "سورة السجدة - الآية 22", ayah: "﴿إِنَّا مِنَ الْمُجْرِمِينَ مُنْتَقِمُونَ﴾" }, 
-  { name: "الْعَفُوُّ", meaning: "الذي يمحو السيئات.", quran: "سورة النساء - الآية 43", ayah: "﴿فَإِنَّ اللَّهَ كَانَ عَفُوًّا قَدِيرًا﴾" }, 
-  { name: "الرَّؤُوفُ", meaning: "شديد الرحمة والشفقة.", quran: "سورة النور - الآية 20", ayah: "﴿وَأَنَّ اللَّهَ رَءُوفٌ رَحِيمٌ﴾" }, 
-  { name: "مَالِكُ الْمُلْكِ", meaning: "الذي ينفذ أمره في ملكه.", quran: "سورة آل عمران - الآية 26", ayah: "﴿قُلِ اللَّهُمَّ مَالِكَ الْمُلْكِ﴾" }, 
-  { name: "ذُو الْجَلَالِ وَالْإِكْرَامِ", meaning: "المستحق للتعظيم والإكرام.", quran: "سورة الرحمن - الآية 27", ayah: "﴿وَيَبْقَى وَجْهُ رَبِّكَ ذُو الْجَلَالِ وَالْإِكْرَامِ﴾" }, 
-  { name: "الْمُقْسِطُ", meaning: "العادل في حكمه.", quran: "سورة آل عمران - الآية 18", ayah: "﴿قَائِمًا بِالْقِسْطِ﴾" }, 
-  { name: "الْجَامِعُ", meaning: "الذي يجمع الخلائق ليوم الحساب.", quran: "سورة آل عمران - الآية 9", ayah: "﴿رَبَّنَا إِنَّكَ جَامِعُ النَّاسِ لِيَوْمٍ لَا رَيْبَ فِيهِ﴾" }, 
-  { name: "الْغَنِيُّ", meaning: "المستغني عن كل ما سواه.", quran: "سورة البقرة - الآية 267", ayah: "﴿وَاعْلَمُوا أَنَّ اللَّهَ غَنِيٌّ حَمِيدٌ﴾" }, 
-  { name: "الْمُغْنِي", meaning: "الذي يغني من يشاء.", quran: "سورة النجم - الآية 48", ayah: "﴿وَأَنَّهُ هُوَ أَغْنَى وَأَقْنَى﴾" }, 
-  { name: "الْمَانِعُ", meaning: "الذي يمنع البلاء عن من يشاء.", quran: "حديث شريف", ayah: "﴿لَا مَانِعَ لِمَا أَعْطَيْتَ وَلَا مُعْطِيَ لِمَا مَنَعْتَ﴾" }, 
-  { name: "الضَّارُّ", meaning: "مقدر الضر لمن يشاء.", quran: "سورة الأنعام - الآية 17", ayah: "﴿وَإِنْ يَمْسَسْكَ اللَّهُ بِضُرٍّ فَلَا كَاشِفَ لَهُ إِلَّا هُوَ﴾" }, 
-  { name: "النَّافِعُ", meaning: "مقدر النفع لمن يشاء.", quran: "سورة الأنعام - الآية 17", ayah: "﴿وَإِنْ يُرِدْكَ بِخَيْرٍ فَلَا رَادَّ لِفَضْلِهِ﴾" }, 
-  { name: "النُّورُ", meaning: "الذي بنوره تستنير العقول.", quran: "سورة النور - الآية 35", ayah: "﴿اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ﴾" }, 
-  { name: "الْهَادِي", meaning: "الذي يهدي القلوب للحق.", quran: "سورة الحج - الآية 54", ayah: "﴿وَإِنَّ اللَّهَ لَهَادِ الَّذِينَ آمَنُوا إِلَى صِرَاطٍ مُسْتَقِيمٍ﴾" }, 
-  { name: "الْبَدِيعُ", meaning: "خالق الأشياء على غير مثال سابق.", quran: "سورة البقرة - الآية 117", ayah: "﴿بَدِيعُ السَّمَاوَاتِ وَالْأَرْضِ﴾" }, 
-  { name: "الْبَاقِي", meaning: "الذي لا يزول.", quran: "سورة طه - الآية 73", ayah: "﴿وَاللَّهُ خَيْرٌ وَأَبْقَى﴾" }, 
-  { name: "الْوَارِثُ", meaning: "الذي يؤول إليه كل شيء بعد فناء خلقه.", quran: "سورة الحجر - الآية 23", ayah: "﴿وَإِنَّا لَنَحْنُ نُحْيِي وَنُمِيتُ وَنَحْنُ الْوَارِثُونَ﴾" }, 
-  { name: "الرَّشِيدُ", meaning: "المرشد لخلقه إلى مصالحهم.", quran: "سورة هود - الآية 87", ayah: "﴿إِنَّكَ لَأَنْتَ الْحَلِيمُ الرَّشِيدُ﴾" }, 
-  { name: "الصَّبُورُ", meaning: "الذي لا يعاجل العصاة بالعقوبة.", quran: "سورة الأعراف - الآية 137", ayah: "﴿وَاصْبِرْ حَتَّى يَحْكُمَ اللَّهُ﴾" } 
+  { name: "الْخَالِقُ", meaning: "المبدع للأشياء والمخترع لها على غير مثال.", quran: "سورة الحشر - الآية 24", ayah: "﴿هُوَ اللَّهُ الْخَالِقُ الْبَارِئُ الْمُصَوِّرُ﴾" }
 ]; 
 
 const fullAzkarDatabase = { 
@@ -378,24 +433,19 @@ const fullAzkarDatabase = {
     { text: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ...", count: 1, }, 
     { text: "قُلْ هُوَ اللَّهُ أَحَدٌ... (ثلاث مرات)", count: 3 }, 
     { text: "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللهُ...", count: 1, }, 
-    { text: "اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ.", count: 1, }, 
-    { text: "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ.", count: 1, }, 
+    { text: "اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ.", count: 1, }
   ], 
   maseh: [ 
     { text: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ...", count: 1, }, 
     { text: "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ... (ثلاث مرات)", count: 3 }, 
-    { text: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللهُ...", count: 1, }, 
-    { text: "اللَّهُمَّ بِكَ أَمْسَيْنَا وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا وَبِكَ نَمُوتُ وَإِلَيْكَ الْمَصِيرُ.", count: 1, }, 
-    { text: "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ...", count: 1, }, 
+    { text: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ لَا إِلَهَ إِلَّا اللهُ...", count: 1, }
   ], 
   travel: [ 
-    { text: "اللهُ أَكْبَر، اللهُ أَكْبَر، اللهُ أَكْبَر، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ، وَإِنَّا إِلَى رَبِّنَا لَمُنْقَلِبُونَ...", count: 1, }, 
-    { text: "اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى، وَمِنَ الْعَمَلِ مَا تَرْضَى...", count: 1, }, 
+    { text: "اللهُ أَكْبَر، اللهُ أَكْبَر، اللهُ أَكْبَر، سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ...", count: 1, }
   ], 
   prayer: [ 
-    { text: "أَسْتَغْفِرُ اللَّهَ (ثَلَاثاً). اللَّهُمَّ أَنْتَ السَّلَامُ وَمِنْكَ السَّلَامُ، تَبَارَكْتَ ذَا الْجَلَالِ وَالْإِكْرَامِ.", count: 1, }, 
-    { text: "لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ...", count: 1, }, 
-    { text: "سُبْحَانَ اللَّهِ (33)، وَالْحَمْدُ لِلَّهِ (33)، وَاللَّهُ أَكْبَرُ (33)...", count: 1, }, 
+    { text: "أَسْتَغْفِرُ اللَّهَ (ثَلَاثاً). اللَّهُمَّ أَنْتَ السَّلَامُ وَمِنْكَ السَّلَامُ...", count: 1, }, 
+    { text: "سُبْحَانَ اللَّهِ (33)، وَالْحَمْدُ لِلَّهِ (33)، وَاللَّهُ أَكْبَرُ (33)...", count: 1, }
   ], 
 }; 
 
@@ -641,4 +691,21 @@ window.addEventListener("DOMContentLoaded", () => {
     try { setupStoriesListener(); } catch (e) {} 
     try { checkForUpdates(); } catch (e) {} 
     try { fetchPrayerTimes(); initPrayerSettings(); } catch (e) {} 
-});
+});// دالة مؤقتة لتجربة الأذان بعد 10 ثوانٍ
+function testAdhanNow() {
+    triggerHaptic();
+    showToast("أغلق التطبيق الآن! سيتم تشغيل الأذان بعد 10 ثوانٍ.");
+    
+    // حساب الوقت بعد 10 ثوانٍ من اللحظة الحالية
+    let timeInMillis = new Date().getTime() + 10000; 
+    
+    // إرسال المنبه للأندرويد
+    if (typeof AndroidBridge !== "undefined" && typeof AndroidBridge.schedulePrayerAlarm === "function") {
+        AndroidBridge.schedulePrayerAlarm("التجربة (اختبار)", timeInMillis);
+    }
+    
+    // تشغيل النافذة الداخلية أيضاً كاحتياط في حال بقيت داخل التطبيق
+    setTimeout(() => {
+        triggerAdhanAlert("التجربة (اختبار)");
+    }, 10000);
+}
