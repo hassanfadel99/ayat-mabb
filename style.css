@@ -33,9 +33,7 @@ body { background: var(--bg); font-family: 'Cairo', sans-serif; color: var(--tex
 .haptic-btn { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease; position: relative; overflow: hidden; }
 .haptic-btn:active { transform: scale(0.94); filter: brightness(0.85); }
 
-/* =========================================
-   شاشة البداية (Splash Screen)
-   ========================================= */
+/* شاشة البداية (Splash Screen) */
 .splash-container { position: fixed; inset: 0; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 99999; transition: opacity 0.5s; }
 .splash-content { text-align: center; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 .splash-logo-container { width: 110px; height: 110px; margin-bottom: 20px; }
@@ -44,9 +42,7 @@ body { background: var(--bg); font-family: 'Cairo', sans-serif; color: var(--tex
 .splash-subtitle { font-size: 1rem; opacity: 0.9; margin-bottom: 30px; color: var(--primary-text); opacity: 0.8; }
 .enter-btn { background: var(--card); color: var(--text); border: none; padding: 14px 35px; border-radius: 14px; font-size: 1.05rem; font-family: 'Cairo'; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: inline-flex; align-items: center; gap: 8px; }
 
-/* =========================================
-   الشريط العلوي والقائمة الجانبية
-   ========================================= */
+/* الشريط العلوي والقائمة الجانبية */
 .top-navbar { height: 65px; background: var(--primary); color: var(--primary-text); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border-bottom: 2px solid rgba(255,255,255,0.1); position: sticky; top:0; z-index: 100;}
 .menu-trigger-btn { background: rgba(255,255,255,0.15); color: var(--primary-text); border: none; width: 42px; height: 42px; border-radius: 12px; font-size: 1.2rem; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 .nav-brand { font-size: 1.25rem; font-weight: 700; color: var(--primary-text); }
@@ -65,9 +61,7 @@ html[dir="ltr"] .sidebar-menu.close { transform: translateX(-100%); }
 .sidebar-links li a.home-active-link i { color: var(--primary); }
 #sidebar-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); z-index: 199999; }
 
-/* =========================================
-   الواجهة الرئيسية (الكبسولات والتقدم)
-   ========================================= */
+/* الواجهة الرئيسية */
 .main-app-layout { max-width: 600px; margin: auto; padding: 20px 16px; }
 .dashboard-view { animation: fadeInSection 0.3s ease-out; }
 @keyframes fadeInSection { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -101,7 +95,7 @@ html[dir="ltr"] .hijri-mini-capsule { border-right: none; border-left: 4px solid
 .amiri-font { font-family: 'Amiri', serif !important; color: var(--primary); font-size: 1.2rem; line-height: 1; font-weight: bold; }
 .hijri-text-small { font-size: 0.9rem; font-weight: 700; color: var(--text); }
 
-/* 🌟 بطاقة مواقيت الصلاة الجديدة */
+/* بطاقة مواقيت الصلاة */
 .prayer-times-card { background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 20px; padding: 18px; color: white; margin-bottom: 16px; box-shadow: 0 10px 25px rgba(108, 0, 26, 0.2); position: relative; overflow: hidden;}
 body.dark-mode .prayer-times-card { background: linear-gradient(135deg, #2a2a2a, #121212); border: 1px solid var(--border); }
 .prayer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; position: relative; z-index: 2;}
@@ -113,9 +107,7 @@ body.dark-mode .prayer-times-card { background: linear-gradient(135deg, #2a2a2a,
 .pt-name { font-size: 0.75rem; opacity: 0.8; font-weight: bold; color: white;}
 .pt-item strong { font-size: 1.1rem; font-family: 'Cairo', monospace; color: white;}
 
-/* =========================================
-   تنسيقات عرض الخدمات
-   ========================================= */
+/* تنسيقات عرض الخدمات */
 .services-grid-blocks { transition: all 0.3s ease; margin-top: 10px;}
 .block-service-btn { cursor: pointer; position: relative; transition: all 0.3s; display: flex; align-items: center;}
 .block-icon { display: flex; justify-content: center; align-items: center; transition: all 0.3s; background: var(--bg); color: var(--primary);}
@@ -162,9 +154,7 @@ body.layout-minimal .block-text-wrap p { display: none; }
 .search-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow); margin-bottom: 16px; }
 .search-box input { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font-family: 'Cairo'; font-size: 0.95rem; }
 
-/* =========================================
-   القرآن الكريم والتلاوة
-   ========================================= */
+/* القرآن الكريم والتلاوة */
 .surah-modern-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0; }
 .surah-grid-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 5px; cursor: pointer; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;}
 .surah-number { width: 30px; height: 30px; background: var(--bg); color: var(--primary); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cairo'; font-size: 0.8rem; font-weight: 800; margin-bottom: 8px; }
@@ -188,7 +178,7 @@ body.layout-minimal .block-text-wrap p { display: none; }
 .pag-indicator-text { font-size: 0.82rem; font-weight: bold; opacity: 0.7; background: var(--bg); padding: 5px 16px; border-radius: 15px; border: 1px solid var(--border); color: var(--text); }
 
 /* المشغل العائم للقرآن */
-.floating-audio-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 24px; padding: 15px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); z-index: 199999; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); direction: rtl;}
+.floating-audio-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 24px; padding: 15px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); z-index: 199999; direction: rtl;}
 html[dir="ltr"] .floating-audio-bar { direction: ltr; }
 .floating-audio-bar.hidden { bottom: -120px; opacity: 0; pointer-events: none; }
 .f-audio-top-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
@@ -206,9 +196,7 @@ html[dir="ltr"] .floating-audio-bar { direction: ltr; }
 #f-audio-seekbar::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 #f-audio-current, #f-audio-duration { opacity: 0.8; font-variant-numeric: tabular-nums; min-width: 35px; text-align: center; }
 
-/* =========================================
-   الستوريات
-   ========================================= */
+/* الستوريات */
 #stories-section { display: flex; justify-content: center; align-items: center; height: calc(100vh - 65px); background: var(--bg); position: relative; padding: 0; }
 .stories-fixed-header { position: absolute; top: 15px; left: 15px; right: 15px; z-index: 100; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
 .stories-fixed-header > * { pointer-events: auto; }
@@ -245,9 +233,7 @@ html[dir="ltr"] .floating-audio-bar { direction: ltr; }
 .video-seekbar-input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 .vid-play-pause-btn { background: transparent; border: none; color: white; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 25px; }
 
-/* =========================================
-   الأسماء، الأذكار، المسبحة
-   ========================================= */
+/* الأسماء، الأذكار، المسبحة */
 .asma-mini-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
 .asma-chip { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow); transition: all 0.3s; position: relative; overflow: hidden; }
 .asma-chip::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--primary); opacity: 0; transition: opacity 0.3s; }
@@ -277,9 +263,7 @@ html[dir="ltr"] .floating-audio-bar { direction: ltr; }
 .misbaha-tap-label { font-size: 0.75rem; opacity: 0.6; font-weight: bold; margin-top: 2px; color: var(--text); }
 .reset-misbaha-btn-modern { width: 100%; max-width: 260px; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 12px 24px; border-radius: 14px; font-family: 'Cairo'; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; box-shadow: var(--shadow);}
 
-/* =========================================
-   الحاسبة الشرعية، الإعدادات والمطور
-   ========================================= */
+/* الحاسبة الشرعية، الإعدادات والمطور */
 .financial-capsule-header { display: flex; background: var(--bg); border: 1px solid var(--border); padding: 5px; border-radius: 30px; gap: 4px; margin-bottom: 20px; }
 .f-capsule-btn { flex: 1; border: none; padding: 10px 14px; border-radius: 25px; font-family: 'Cairo'; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .f-capsule-btn.active { background: var(--card); color: var(--primary); border: 1px solid var(--border); box-shadow: var(--shadow); }
@@ -336,9 +320,15 @@ html[dir="ltr"] .floating-audio-bar { direction: ltr; }
 .insta-gradient-btn { background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); }
 .facebook-blue-btn { background: #1877f2; }
 
-/* =========================================
-   النوافذ المنبثقة والإشعارات
-   ========================================= */
+/* 🌟 تصميم زر التشغيل والإيقاف (Toggle Switch) للأذان */
+.toggle-switch { position: relative; display: inline-block; width: 50px; height: 26px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+.toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+.toggle-switch input:checked + .toggle-slider { background-color: var(--primary); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+
+/* النوافذ المنبثقة والإشعارات */
 .verse-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0, 0.8); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; z-index: 210000; padding: 16px; }
 .perfect-square-popup { background: var(--card); border: 2px solid var(--primary); border-radius: 24px; width: 100%; max-width: 380px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); border-top-width: 10px; }
 .verse-text-preview { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px 15px; text-align: center; display: flex; flex-direction: column; gap: 12px; }
@@ -361,3 +351,11 @@ html[dir="ltr"] .floating-audio-bar { direction: ltr; }
 body.dark-mode .download-bar-bg { background: rgba(255,255,255,0.1); }
 #download-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), #e63946); border-radius: 10px; transition: width 0.3s ease; }
 @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-10px); } }
+
+/* 🌟 تأثير النبض لأيقونة الأذان */
+@keyframes pulse-mosque {
+  0% { transform: scale(1); filter: drop-shadow(0 0 5px var(--accent)); }
+  50% { transform: scale(1.1); filter: drop-shadow(0 0 20px var(--accent)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 5px var(--accent)); }
+}
+.pulsing-mosque-icon i { animation: pulse-mosque 1.5s infinite; }
