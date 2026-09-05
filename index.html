@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="app_title">تطبيق آيات</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+
+  <!-- شاشة الترحيب -->
+  <div id="splash-screen" class="splash-container">
+    <div class="splash-content">
+      <div class="splash-logo-container">
+        <img src="https://i.ibb.co/yFY29WhK/image.jpg" class="dev-main-avatar-img" alt="Ayat Logo">
+      </div>
+      <h1 class="splash-title" data-i18n="app_title">تطبيق آيات</h1>
+      <p class="splash-subtitle" data-i18n="app_subtitle">رحلة إيمانية في عالم القرآن الكريم</p>
+      <button class="enter-btn haptic-btn" onclick="startApp()">
+        <i class="fa-solid fa-book-quran"></i> <span data-i18n="enter_app">دخول التطبيق</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- القائمة الجانبية -->
+  <nav id="sidebar" class="sidebar-menu close">
+    <div class="sidebar-header">
+      <h3 data-i18n="menu">القائمة</h3>
+      <button class="close-sidebar-btn haptic-btn" onclick="toggleSidebar()">&times;</button>
+    </div>
+    <ul class="sidebar-links">
+      <li><a href="#" onclick="showSection('home-dashboard')" class="haptic-btn home-active-link"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></a></li>
+      <li><a href="#" onclick="showSection('notifications-page')" class="haptic-btn"><i class="fa-solid fa-bell"></i> <span data-i18n="notifications">الإشعارات</span></a></li>
+      <li><a href="#" onclick="showSection('settings-page')" class="haptic-btn"><i class="fa-solid fa-gear"></i> <span data-i18n="settings">التخصيص والإعدادات</span></a></li>
+      <li><a href="#" onclick="showSection('developer-page')" class="haptic-btn"><i class="fa-solid fa-circle-info"></i> <span data-i18n="about">حول التطبيق</span></a></li>
+      <hr style="border: 0; height: 1px; background: var(--border); margin: 5px 0;">
+      <li><a href="#" onclick="shareApp()" class="haptic-btn" style="color: var(--primary);"><i class="fa-solid fa-share-nodes"></i> <span data-i18n="share">مشاركة التطبيق</span></a></li>
+    </ul>
+  </nav>
+  <div id="sidebar-overlay" class="hidden" onclick="toggleSidebar()"></div>
+
+  <!-- المشغل الصوتي العائم -->
+  <div id="floating-audio-player" class="floating-audio-bar hidden">
+    <div class="f-audio-top-row">
+      <div class="f-audio-info">
+        <i class="fa-solid fa-compact-disc fa-spin" id="f-audio-icon"></i>
+        <div class="f-audio-text">
+          <span id="f-audio-surah">سورة البقرة</span>
+          <small id="f-audio-reader" data-i18n="playing">جاري التلاوة...</small>
+        </div>
+      </div>
+      <div class="f-audio-controls">
+        <button class="f-btn haptic-btn" onclick="togglePlayPause()" id="f-btn-play"><i class="fa-solid fa-pause"></i></button>
+        <button class="f-btn close-btn haptic-btn" onclick="stopAudio()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="f-audio-progress-container">
+      <span id="f-audio-current">0:00</span>
+      <input type="range" id="f-audio-seekbar" value="0" min="0" max="100" step="0.1" class="horizontal-hue-slider" style="background: rgba(255,255,255,0.2); height: 6px;">
+      <span id="f-audio-duration">0:00</span>
+    </div>
+  </div>
+
+  <audio id="adhan-audio" preload="auto" src="adhan.mp3"></audio>
+  <audio id="quran-audio" preload="metadata" hidden></audio>
+
+  <!-- المحتوى الرئيسي -->
+  <div id="app-content" class="main-app-layout hidden">
+
+    <header class="top-navbar">
+      <button class="menu-trigger-btn haptic-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+      <div class="nav-brand" data-i18n="app_title">تطبيق آيات</div>
+      <div style="width: 40px;"></div>
+    </header>
+
+    <main id="home-dashboard" class="dashboard-view">
+      
+      <div class="horizontal-capsules-container">
+        <div class="ward-progress-card item-capsule">
+          <div class="ward-info-row">
+            <div class="ward-text-details">
+              <h3 data-i18n="ward_title">قراءة القرآن اليومية</h3>
+              <p id="ward-status-text" data-i18n="ward_calc">جاري الاحتساب...</p>
+            </div>
+            <div class="ward-percent-badge" id="ward-percent-badge">0%</div>
+          </div>
+          <div class="progress-bar-container"><div class="progress-bar-fill" id="ward-bar-fill" style="width: 0%;"></div></div>
+        </div>
+
+        <div id="resume-reading-box" class="resume-card item-capsule hidden haptic-btn" onclick="resumeLastReading()">
+          <div class="resume-content">
+            <div class="resume-icon-badge"><i class="fa-solid fa-bookmark"></i></div>
+            <div class="resume-text-details">
+              <h3 data-i18n="resume_title">متابعة القراءة</h3>
+              <p id="resume-text">توقفت عند سورة...</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="dashboard-khatma-alert" class="khatma-alert-card item-capsule hidden haptic-btn" onclick="showSection('khatma-section')">
+          <div class="resume-content">
+            <div class="resume-icon-badge"><i class="fa-solid fa-hourglass-half"></i></div>
+            <div class="resume-text-details">
+              <h3 data-i18n="khatma_plan">مخطط الختمة</h3>
+              <p id="dashboard-khatma-text" class="khatma-plan-visible">جاري الاحتساب...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="horizontal-capsules-container nod-hijri-row">
+        <div class="item-capsule nod-mini-capsule haptic-btn" onclick="showSection('asma-section')">
+          <div class="nod-content">
+            <div class="nod-icon"><i class="fa-solid fa-star-and-crescent"></i></div>
+            <div class="nod-text">
+              <span data-i18n="nod_title">اسم اليوم</span>
+              <h3 id="nod-name" class="amiri-font">الرَّحْمَنُ</h3>
+            </div>
+          </div>
+        </div>
+        <div class="item-capsule hijri-mini-capsule">
+          <div class="nod-content">
+            <div class="nod-icon"><i class="fa-solid fa-calendar-days"></i></div>
+            <div class="nod-text">
+              <span data-i18n="hijri_date">التاريخ الهجري</span>
+              <h3 id="hijri-date" class="hijri-text-small">جاري...</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prayer-times-card haptic-btn" onclick="showSection('settings-page')">
+        <div class="prayer-header">
+            <div>
+                <h3 id="next-prayer-name">جاري الحساب...</h3>
+                <p id="prayer-countdown">متبقي: --:--</p>
+            </div>
+            <div class="prayer-location-badge">
+                <i class="fa-solid fa-location-dot"></i> <span id="current-city-name">البصرة</span>
+            </div>
+        </div>
+        <div class="prayer-times-row">
+            <div class="pt-item"><span class="pt-name">الفجر</span><strong id="pt-fajr">--:--</strong></div>
+            <div class="pt-item"><span class="pt-name">الظهر</span><strong id="pt-dhuhr">--:--</strong></div>
+            <div class="pt-item"><span class="pt-name">المغرب</span><strong id="pt-maghrib">--:--</strong></div>
+        </div>
+      </div>
+
+      <nav class="services-grid-blocks" id="main-services-grid">
+        <div class="block-service-btn haptic-btn" onclick="showSection('quran-section')">
+          <div class="block-icon"><i class="fa-solid fa-book-open-reader"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="quran">تلاوة القرآن</h3>
+            <p data-i18n="quran_desc">قراءة واستماع</p>
+          </div>
+        </div>
+        <div class="block-service-btn haptic-btn" onclick="showSection('stories-section')">
+          <div class="block-icon"><i class="fa-solid fa-clapperboard"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="stories">ستوريات قرآنية</h3>
+            <p data-i18n="stories_desc">تلاوات قصيرة</p>
+          </div>
+        </div>
+        <div class="block-service-btn haptic-btn" onclick="showSection('azkar-section')">
+          <div class="block-icon"><i class="fa-solid fa-hands-holding-circle"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="azkar">حصن المسلم</h3>
+            <p data-i18n="azkar_desc">موسوعة الأذكار</p>
+          </div>
+        </div>
+        <div class="block-service-btn haptic-btn" onclick="showSection('asma-section')">
+          <div class="block-icon"><i class="fa-solid fa-hand-holding-heart"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="asma">أسماء الله الحسنى</h3>
+            <p data-i18n="asma_desc">معانيها في القرآن</p>
+          </div>
+        </div>
+        <div class="block-service-btn haptic-btn" onclick="showSection('misbaha-section')">
+          <div class="block-icon"><i class="fa-solid fa-calculator"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="misbaha">المسبحة الذكية</h3>
+            <p data-i18n="misbaha_desc">عداد الاستغفار</p>
+          </div>
+        </div>
+        <div class="block-service-btn haptic-btn" onclick="showSection('financial-section')">
+          <div class="block-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="financial">الحاسبة الشرعية</h3>
+            <p data-i18n="financial_desc">الزكاة والخمس</p>
+          </div>
+        </div>
+        
+        <div class="block-service-btn haptic-btn" onclick="showSection('khatma-section')">
+          <div class="block-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="khatma">الختمة الشخصية</h3>
+            <p data-i18n="khatma_desc">جدول القراءة الخاص</p>
+          </div>
+        </div>
+        
+        <div class="block-service-btn haptic-btn" onclick="showSection('family-khatma-section')">
+          <div class="block-icon" style="background: rgba(46, 204, 113, 0.1); color: #2ecc71;"><i class="fa-solid fa-people-group"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="family_khatma">الختمة العائلية</h3>
+            <p data-i18n="family_khatma_desc">ختمة مشتركة مع العائلة</p>
+          </div>
+        </div>
+        
+        <div class="block-service-btn haptic-btn" onclick="showSection('qibla-section'); initQibla();">
+          <div class="block-icon" style="background: rgba(255, 159, 28, 0.1); color: var(--accent);"><i class="fa-solid fa-kaaba"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="qibla">اتجاه القبلة</h3>
+            <p data-i18n="qibla_desc">بوصلة دقيقة للكعبة</p>
+          </div>
+        </div>
+        
+        <div class="block-service-btn haptic-btn" onclick="showSection('settings-page')">
+          <div class="block-icon"><i class="fa-solid fa-palette"></i></div>
+          <div class="block-text-wrap">
+            <h3 data-i18n="settings_short">التخصيص</h3>
+            <p data-i18n="settings_desc">المظهر واللغات</p>
+          </div>
+        </div>
+      </nav>
+    </main>
+
+    <!-- قسم الستوريات -->
+    <section id="stories-section" class="dashboard-view hidden" style="padding: 0; max-width: 100%; position: relative;">
+      <div class="stories-fixed-header">
+        <button class="stories-back-btn haptic-btn" onclick="backToHome()">
+          <i class="fa-solid fa-chevron-right"></i> <span data-i18n="home">الرئيسية</span>
+        </button>
+        <div class="stories-tabs">
+          <button id="tab-all-stories" class="active haptic-btn" onclick="renderStories('all')">الكل</button>
+          <button id="tab-fav-stories" class="haptic-btn" onclick="renderStories('fav')">المفضلة ❤️</button>
+        </div>
+        <div style="width: 10px;"></div>
+      </div>
+      <div id="stories-container" class="stories-feed-container"></div>
+    </section>
+
+    <!-- 🌟 قسم الختمة العائلية 🌟 -->
+    <section id="family-khatma-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> الرئيسية</button>
+      </div>
+
+      <div class="fk-tabs-grid">
+        <button id="fktab-current" class="tab-btn active haptic-btn" onclick="switchFkTab('current')"><i class="fa-solid fa-book-open"></i> الختمة الحالية</button>
+        <button id="fktab-create" class="tab-btn haptic-btn" onclick="switchFkTab('create')"><i class="fa-solid fa-plus-circle"></i> إنشاء غرفة</button>
+        <button id="fktab-join" class="tab-btn haptic-btn" onclick="switchFkTab('join')"><i class="fa-solid fa-magnifying-glass"></i> انضمام لغرفة</button>
+        <button id="fktab-history" class="tab-btn haptic-btn" onclick="switchFkTab('history')"><i class="fa-solid fa-clock-rotate-left"></i> سجل الختمات</button>
+      </div>
+
+      <div id="fk-view-current" class="fk-view-panel">
+        <div id="fk-no-room-msg" style="text-align: center; padding: 40px 20px; opacity: 0.7;">
+            <i class="fa-solid fa-users-slash" style="font-size: 3rem; margin-bottom: 15px; color: var(--primary);"></i>
+            <h4>لست منضماً لأي غرفة حالياً</h4>
+            <p style="font-size: 0.85rem; margin-top: 10px;">قم بإنشاء غرفة جديدة أو ابحث عن كود للانضمام.</p>
+        </div>
+
+        <div id="fk-active-room-container" class="hidden">
+            <div class="pro-panel-widget" style="text-align: center; margin-bottom: 15px; padding: 15px; position: relative;">
+                <button onclick="promptLeaveFkRoom()" class="haptic-btn" style="position: absolute; top: 15px; left: 15px; background: transparent; border: none; color: #e63946; font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-right-from-bracket"></i></button>
+                <h3 id="fk-khatma-name-display" style="color: var(--text); margin-bottom: 15px; font-family: 'Amiri', serif; font-size: 1.5rem;">ختمة عائلية</h3>
+                
+                <p style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 5px;">كود الغرفة (للمشاركة):</p>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 12px;">
+                    <h2 id="fk-room-code-display" style="font-size: 2.2rem; color: var(--primary); letter-spacing: 4px; font-family: 'Cairo', monospace; margin: 0;">---</h2>
+                    <button class="haptic-btn" onclick="shareRoomCode()" style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; width: 45px; height: 45px; display: flex; justify-content: center; align-items: center; color: var(--primary); font-size: 1.2rem; cursor: pointer; box-shadow: var(--shadow);"><i class="fa-solid fa-share-nodes"></i></button>
+                </div>
+                <span id="fk-room-status-badge" class="portion-status" style="background: var(--accent); color: #000; padding: 4px 10px;">قيد الإنشاء (بانتظار الانضمام)</span>
+            </div>
+
+            <div id="fk-instruction-note" class="pro-panel-widget hidden" style="background: rgba(46, 204, 113, 0.05); border-color: #2ecc71; padding: 15px; margin-bottom: 15px; text-align: center;">
+                <i class="fa-solid fa-circle-info" style="color: #2ecc71; font-size: 1.5rem; margin-bottom: 10px;"></i>
+                <p style="font-size: 0.85rem; font-weight: bold; color: var(--text); line-height: 1.6; margin-bottom: 15px;">
+                    يجب عليك أن تكمل قراءة السور أو الأجزاء المترتبة عليك. وعند إكمال سورة أو جزء معين خاص بك، ادخل للغرفة من هنا واضغط على زر "لم يُقرأ" حتى يتبين لجميع المشاركين أنك أكملت.
+                </p>
+                <button class="pro-panel-btn haptic-btn" onclick="showSection('quran-section')" style="background: #2ecc71; color: white;"><i class="fa-solid fa-book-open-reader"></i> الذهاب لتلاوة القرآن</button>
+            </div>
+
+            <div id="fk-waiting-container" class="pro-panel-widget" style="margin-bottom: 15px; padding: 15px;">
+                <h4 style="margin-bottom: 10px; color: var(--primary);"><i class="fa-solid fa-users"></i> المشاركون بالختمة:</h4>
+                <div id="fk-participants-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                
+                <button id="fk-start-distribution-btn" class="pro-panel-btn haptic-btn hidden" onclick="startFamilyDistribution()" style="margin-top: 15px; background: #2ecc71; color: white;">
+                    <i class="fa-solid fa-shuffle"></i> توزيع الأجزاء وبدء الختمة
+                </button>
+            </div>
+
+            <div id="fk-distribution-container" class="hidden" style="margin-top: 20px;">
+                <div class="fk-segmented-control">
+                    <button id="fk-subtab-mine" class="fk-seg-btn active haptic-btn" onclick="switchFkActiveTab('mine')">
+                        <i class="fa-solid fa-user-check"></i> حصتي
+                    </button>
+                    <button id="fk-subtab-all" class="fk-seg-btn haptic-btn" onclick="switchFkActiveTab('all')">
+                        <i class="fa-solid fa-chart-pie"></i> تقدم المشاركين
+                    </button>
+                </div>
+
+                <div id="fk-view-mine" class="pro-panel-widget">
+                    <h4 style="margin-bottom: 15px; color: var(--primary); text-align: center;"><i class="fa-solid fa-book-open-reader"></i> الحصص المخصصة لك:</h4>
+                    <div id="fk-portions-grid-mine" class="portions-grid"></div>
+                </div>
+
+                <div id="fk-view-all" class="hidden">
+                    <div id="fk-participants-progress-list" style="display: flex; flex-direction: column;"></div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <div id="fk-view-create" class="fk-view-panel hidden pro-panel-widget">
+        <h3 class="panel-widget-title"><i class="fa-solid fa-plus-circle"></i> إنشاء ختمة عائلية</h3>
+        <div class="pro-input-field" style="margin-bottom: 15px;">
+            <label>اسم الختمة (مثال: لروح الوالد):</label>
+            <input type="text" id="fk-create-khatma-name" placeholder="أدخل اسم الختمة هنا" />
+        </div>
+        <div class="pro-input-field" style="margin-bottom: 15px;">
+            <label>اسمك (ليظهر للمشاركين):</label>
+            <input type="text" id="fk-create-name" placeholder="مثال: أحمد" />
+        </div>
+        <div class="pro-input-field" style="margin-bottom: 20px;">
+            <label>نوع توزيع الختمة:</label>
+            <select id="fk-create-type">
+                <option value="ajza">توزيع بالأجزاء (30 جزء)</option>
+                <option value="surahs">توزيع بالسور (114 سورة)</option>
+            </select>
+        </div>
+        <button class="pro-panel-btn haptic-btn" onclick="createFamilyRoom()"><i class="fa-solid fa-check"></i> إنشاء الغرفة</button>
+      </div>
+
+      <div id="fk-view-join" class="fk-view-panel hidden pro-panel-widget">
+        <h3 class="panel-widget-title"><i class="fa-solid fa-magnifying-glass"></i> الانضمام لغرفة</h3>
+        <div class="pro-input-field" style="margin-bottom: 15px;">
+            <label>اسمك (ليظهر للمشاركين):</label>
+            <input type="text" id="fk-join-name" placeholder="مثال: فاطمة" />
+        </div>
+        <div class="pro-input-field" style="margin-bottom: 20px;">
+            <label>كود الغرفة:</label>
+            <input type="text" id="fk-join-code" placeholder="أدخل الكود المكون من 6 أرقام" style="letter-spacing: 2px; text-align: center; font-size: 1.2rem;" />
+        </div>
+        <button class="pro-panel-btn haptic-btn" onclick="joinFamilyRoom()"><i class="fa-solid fa-arrow-right-to-bracket"></i> انضمام</button>
+      </div>
+
+      <div id="fk-view-history" class="fk-view-panel hidden pro-panel-widget">
+        <h3 class="panel-widget-title"><i class="fa-solid fa-clock-rotate-left"></i> سجل الختمات المكتملة</h3>
+        <div id="fk-history-list"></div>
+      </div>
+    </section>
+
+    <!-- 🌟 قسم بوصلة القبلة 🌟 -->
+    <section id="qibla-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> الرئيسية</button>
+      </div>
+      <div class="pro-panel-widget" style="text-align: center; padding: 40px 20px;">
+        <h3 class="panel-widget-title" style="margin-bottom: 20px;"><i class="fa-solid fa-compass"></i> بوصلة القبلة</h3>
+        <p id="qibla-status" style="font-size: 0.9rem; margin-bottom: 30px; font-weight: bold; color: var(--accent);">جاري البحث عن موقعك الدقيق (GPS)...</p>
+        
+        <div class="compass-container">
+            <div id="compass-disc" class="compass-disc">
+                <div class="compass-arrow"><i class="fa-solid fa-kaaba"></i></div>
+            </div>
+        </div>
+        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 30px;">للحصول على نتيجة دقيقة، ضع هاتفك بشكل مسطح بعيداً عن المعادن.</p>
+      </div>
+    </section>
+
+    <!-- باقي الأقسام -->
+    <section id="notifications-page" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="pro-panel-widget">
+        <h3 class="panel-widget-title"><i class="fa-solid fa-bell"></i> <span data-i18n="notifications">الإشعارات العامة</span></h3>
+        <p style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 15px; color: var(--text);">هنا تظهر الرسائل والتنبيهات المرسلة لجميع المستخدمين.</p>
+        <div id="notifications-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 500px; overflow-y: auto; margin-bottom: 5px; padding-right: 5px;"></div>
+      </div>
+    </section>
+
+    <section id="quran-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+        <button class="back-btn btn-nav-list haptic-btn" onclick="backToList()"><i class="fa-solid fa-list"></i> <span data-i18n="surah_list">قائمة السور</span></button>
+      </div>
+      <div id="surah-selector-panel" class="surah-selector-panel">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="surah-search" placeholder="ابحث باسم السورة..." oninput="filterSurahs()" />
+        </div>
+        <div id="surah-grid-container" class="surah-modern-grid"></div>
+      </div>
+      <div id="reading-zone" class="reading-area hidden">
+        <div class="reader-select-box">
+          <label for="reader-select"><i class="fa-solid fa-microphone"></i> <span data-i18n="choose_reader">اختر القارئ</span></label>
+          <select id="reader-select">
+            <option value="ar.alafasy">مشاري العفاسي</option>
+            <option value="ar.abdulbasitmurattal">عبد الباسط عبد الصمد</option>
+          </select>
+          <button class="pro-panel-btn haptic-btn" onclick="startAudio()" style="margin-top: 10px;"><i class="fa-solid fa-play"></i> <span data-i18n="start_audio">تشغيل التلاوة</span></button>
+        </div>
+        <div class="quran-book-container">
+          <div class="quran-controls-row">
+            <div style="flex: 1;"></div>
+            <div class="font-size-controls pro-font-panel">
+              <button onclick="changeFontSize(2)" class="pro-font-btn haptic-btn"><i class="fa-solid fa-square-plus"></i></button>
+              <button onclick="changeFontSize(-2)" class="pro-font-btn haptic-btn"><i class="fa-solid fa-square-minus"></i></button>
+            </div>
+          </div>
+          <div id="surah-title" class="surah-title"></div>
+          <div class="tafsir-tip"><i class="fa-solid fa-ellipsis-h"></i> <span data-i18n="copy_tip">اضغط على الآية لنسخها</span></div>
+          <div id="surah-text" class="surah-page-box"></div>
+          <div class="pro-pagination-capsule">
+            <button id="prev-page-btn" class="pag-btn btn-prev haptic-btn" onclick="navigatePage(-1)"><i class="fa-solid fa-chevron-right"></i> <span data-i18n="prev">السابق</span></button>
+            <div id="page-indicator" class="pag-indicator-text">صفحة 1</div>
+            <button id="next-page-btn" class="pag-btn btn-next haptic-btn" onclick="navigatePage(1)"><span data-i18n="next">التالي</span> <i class="fa-solid fa-chevron-left"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="azkar-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="azkar-search-input" placeholder="ابحث في نص الذكر..." oninput="filterAzkar()" />
+      </div>
+      <div class="azkar-category-tabs-scroll">
+        <button id="tab-sabah" class="tab-btn active haptic-btn" onclick="switchAzkarCategory('sabah')" data-i18n="morning">الصباح</button>
+        <button id="tab-maseh" class="tab-btn haptic-btn" onclick="switchAzkarCategory('maseh')" data-i18n="evening">المساء</button>
+        <button id="tab-travel" class="tab-btn haptic-btn" onclick="switchAzkarCategory('travel')" data-i18n="travel">السفر</button>
+        <button id="tab-prayer" class="tab-btn haptic-btn" onclick="switchAzkarCategory('prayer')" data-i18n="prayer">الصلاة</button>
+      </div>
+      <div id="azkar-container" class="azkar-list"></div>
+    </section>
+
+    <section id="asma-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="hero-card" style="margin-bottom: 20px;">
+        <div class="hero-content">
+          <div>
+            <h1 data-i18n="asma">أسماء الله الحسنى</h1>
+            <p data-i18n="asma_hero_desc">انقر على أي اسم لتتعرف على معناه وموضع ذكره في القرآن.</p>
+          </div>
+        </div>
+      </div>
+      <div id="asma-mini-grid" class="asma-mini-grid"></div>
+    </section>
+
+    <section id="misbaha-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="misbaha-card">
+        <div class="misbaha-header-modern">
+          <h2 data-i18n="misbaha">المسبحة الذكية</h2>
+          <div class="misbaha-select-wrapper">
+            <i class="fa-solid fa-pen-nib select-icon"></i>
+            <select id="zekr-select" onchange="resetMisbaha()">
+              <option value="سبحان الله">سبحان الله</option>
+              <option value="الحمد لله">الحمد لله</option>
+              <option value="لا إله إلا الله">لا إله إلا الله</option>
+              <option value="الله اكبر">الله أكبر</option>
+              <option value="أستغفر الله وأتوب إليه">أستغفر الله</option>
+              <option value="اللهم صل على محمد وآل محمد">اللهم صل على محمد</option>
+            </select>
+          </div>
+        </div>
+        <div class="misbaha-pro-container">
+          <div class="misbaha-halo-effect"></div>
+          <button class="misbaha-orbit-button haptic-btn" onclick="incrementMisbaha()">
+            <div id="misbaha-count-number" class="misbaha-main-num">0</div>
+            <div class="misbaha-tap-label" data-i18n="tap_to_count">انقر للتسبيح</div>
+          </button>
+        </div>
+        <button class="reset-misbaha-btn-modern haptic-btn" onclick="resetMisbaha()"><i class="fa-solid fa-arrows-rotate"></i> <span data-i18n="reset">تصفير</span></button>
+      </div>
+    </section>
+
+    <section id="financial-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="financial-capsule-header">
+        <button id="f-tab-zakat" class="f-capsule-btn active haptic-btn" onclick="switchFinancialTab('zakat')"><i class="fa-solid fa-coins"></i> <span data-i18n="zakat">الزكاة</span></button>
+        <button id="f-tab-khums" class="f-capsule-btn haptic-btn" onclick="switchFinancialTab('khums')"><i class="fa-solid fa-wallet"></i> <span data-i18n="khums">الخمس</span></button>
+        <button id="f-tab-records" class="f-capsule-btn haptic-btn" onclick="switchFinancialTab('records')"><i class="fa-solid fa-box-archive"></i> <span data-i18n="records">السجل</span></button>
+      </div>
+      <div id="financial-zakat-content" class="pro-panel-widget sub-financial-panel">
+        <h3 class="panel-widget-title" data-i18n="zakat_title">حاسبة الزكاة (2.5%)</h3>
+        <div class="pro-input-field">
+          <label data-i18n="total_money">رأس المال المتوفر:</label>
+          <input type="number" id="zakat-amount-input" placeholder="0" oninput="calculateZakat()" />
+        </div>
+        <div class="pro-results-dashboard">
+          <div class="pro-result-row"><span data-i18n="zakat_due">الزكاة المستحقة:</span><strong id="zakat-output" class="color-accent">0.00</strong></div>
+        </div>
+        <button class="pro-panel-btn haptic-btn" onclick="saveToFinancialHistory('زكاة')"><i class="fa-solid fa-floppy-disk"></i> <span data-i18n="save_record">حفظ</span></button>
+      </div>
+      <div id="financial-khums-content" class="pro-panel-widget sub-financial-panel hidden">
+        <h3 class="panel-widget-title" data-i18n="khums_title">حاسبة الخمس (20%)</h3>
+        <div class="pro-input-field">
+          <label data-i18n="surplus_money">الأموال الزائدة:</label>
+          <input type="number" id="khums-amount-input" placeholder="0" oninput="calculateKhums()" />
+        </div>
+        <div class="pro-results-dashboard">
+          <div class="pro-result-row highlighted-row"><span data-i18n="khums_due">الخمس الواجب:</span><strong id="khums-total-output" class="color-accent">0.00</strong></div>
+          <div class="pro-result-row sub-row"><span data-i18n="imam_share">سهم الإمام:</span><strong id="khums-imam-output">0.00</strong></div>
+          <div class="pro-result-row sub-row"><span data-i18n="sadah_share">سهم السادة:</span><strong id="khums-sadah-output">0.00</strong></div>
+        </div>
+        <button class="pro-panel-btn haptic-btn" onclick="saveToFinancialHistory('خمس')"><i class="fa-solid fa-floppy-disk"></i> <span data-i18n="save_record">حفظ</span></button>
+      </div>
+      <div id="financial-records-content" class="pro-panel-widget sub-financial-panel hidden">
+        <h3 class="panel-widget-title" data-i18n="history_title">السجل المالي</h3>
+        <div id="financial-history-list" class="financial-history-list"></div>
+      </div>
+    </section>
+
+    <section id="khatma-section" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="pro-panel-widget">
+        <h3 class="panel-widget-title"><i class="fa-solid fa-calendar-check"></i> <span data-i18n="khatma_plan">تنظيم الختمة</span></h3>
+        <div class="pro-input-field">
+          <label data-i18n="khatma_duration">أدخل المدة المستهدفة (بالأيام):</label>
+          <input type="number" id="khatma-days-input" placeholder="مثال: 30" oninput="calculateKhatmaPlan()" />
+        </div>
+        <div class="pro-results-dashboard">
+          <div class="pro-result-row"><span data-i18n="khatma_daily">المطلوب يومياً:</span><strong id="khatma-pages-needed" class="color-accent">0 صفحة</strong></div>
+        </div>
+        <button class="pro-panel-btn alert-action-btn haptic-btn" onclick="activateKhatmaChallenge()" data-i18n="khatma_start">اعتماد</button>
+      </div>
+    </section>
+
+    <section id="settings-page" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="settings-page-header" style="margin-bottom: 20px;">
+        <h2 style="color: var(--text);"><i class="fa-solid fa-palette" style="color: var(--primary);"></i> <span data-i18n="settings">التخصيص والإعدادات</span></h2>
+      </div>
+
+      <div class="settings-section-card">
+        <div class="setting-info-header">
+          <i class="fa-solid fa-mosque"></i>
+          <div><h4>موقع مواقيت الصلاة</h4></div>
+        </div>
+        <p style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 10px;">اختر المحافظة لضبط مواقيت الصلاة بدقة</p>
+        <div class="pro-input-field">
+          <select id="city-select" onchange="updateCity()">
+            <option value="Basra">البصرة</option>
+            <option value="Baghdad">بغداد</option>
+            <option value="Najaf">النجف الأشرف</option>
+            <option value="Karbala">كربلاء المقدسة</option>
+            <option value="Babil">بابل</option>
+            <option value="Dhi Qar">ذي قار (الناصرية)</option>
+            <option value="Maysan">ميسان (العمارة)</option>
+            <option value="Al Qadisiyyah">الديوانية</option>
+            <option value="Al Muthanna">المثنى (السماوة)</option>
+            <option value="Wasit">واسط (الكوت)</option>
+            <option value="Diyala">ديالى</option>
+            <option value="Kirkuk">كركوك</option>
+            <option value="Mosul">نينوى (الموصل)</option>
+            <option value="Erbil">أربيل</option>
+            <option value="Sulaymaniyah">السليمانية</option>
+            <option value="Saladin">صلاح الدين</option>
+            <option value="Anbar">الأنبار</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section-card">
+        <div class="setting-info-header">
+          <i class="fa-solid fa-volume-high"></i>
+          <div><h4>تنبيهات الأذان</h4></div>
+        </div>
+        <p style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 10px;">اختر الصلوات التي تود سماع الأذان الصوتي فيها</p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border);">
+              <span style="font-size: 0.95rem; font-weight: bold; color: var(--text);">صلاة الفجر</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-fajr" onchange="updateAdhanToggles()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border);">
+              <span style="font-size: 0.95rem; font-weight: bold; color: var(--text);">صلاة الظهر</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-dhuhr" onchange="updateAdhanToggles()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border);">
+              <span style="font-size: 0.95rem; font-weight: bold; color: var(--text);">صلاة المغرب</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-maghrib" onchange="updateAdhanToggles()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+        </div>
+      </div>
+
+      <div class="settings-section-card">
+        <div class="setting-info-header">
+          <i class="fa-solid fa-bullseye"></i>
+          <div><h4 data-i18n="ward_goal_title">قراءة القرآن اليومية</h4></div>
+        </div>
+        <p style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 10px;" data-i18n="ward_goal_desc">تحديد عدد الصفحات المطلوب قراءتها يومياً</p>
+        <div class="ward-goal-pro-capsule" style="width: 100%;">
+          <input type="number" id="setting-ward-goal" value="5" min="1" max="100" />
+          <button class="ward-save-capsule-btn haptic-btn" onclick="updateWardGoal()"><i class="fa-solid fa-floppy-disk"></i> <span data-i18n="save_record">حفظ</span></button>
+        </div>
+      </div>
+      
+      <div class="settings-section-card">
+        <div class="setting-info-header">
+          <i class="fa-solid fa-earth-americas"></i>
+          <div><h4 data-i18n="lang_title">لغة التطبيق</h4></div>
+        </div>
+        <div class="popup-style-btn-group lang-group" style="margin-top: 15px;">
+          <button id="lang-ar-btn" class="popup-segmented-btn active haptic-btn" onclick="changeLanguage('ar')">العربية</button>
+          <button id="lang-en-btn" class="popup-segmented-btn haptic-btn" onclick="changeLanguage('en')">English</button>
+          <button id="lang-ku-btn" class="popup-segmented-btn haptic-btn" onclick="changeLanguage('ku')">كوردی</button>
+          <button id="lang-fa-btn" class="popup-segmented-btn haptic-btn" onclick="changeLanguage('fa')">فارسی</button>
+        </div>
+      </div>
+      
+      <div class="settings-section-card">
+        <div class="setting-info-header" style="margin-bottom: 10px;">
+          <i class="fa-solid fa-moon"></i>
+          <div><h4 data-i18n="template_theme">تخصيص قالب</h4></div>
+        </div>
+        <div class="mode-capsules-container" style="display: flex; gap: 10px; margin-bottom: 25px;">
+          <button id="mode-day-btn" class="mode-capsule-btn active haptic-btn" onclick="setAppMode('day')"><i class="fa-solid fa-sun"></i> نهاري (أصيل)</button>
+          <button id="mode-night-btn" class="mode-capsule-btn haptic-btn" onclick="setAppMode('night')"><i class="fa-solid fa-moon"></i> ليلي (داكن)</button>
+        </div>
+        <hr style="border: 0; height: 1px; background: var(--border); margin: 20px 0;">
+        <div class="setting-info-header" style="margin-bottom: 15px;">
+          <i class="fa-solid fa-fill-drip"></i>
+          <div><h4 data-i18n="manual_theme">تخصيص يدوي</h4></div>
+        </div>
+        <button class="pro-panel-btn haptic-btn" onclick="toggleColorSlider()" style="background: var(--card); color: var(--text); border: 1px solid var(--border); margin-bottom: 10px;">
+          <i class="fa-solid fa-palette"></i> <span data-i18n="pick_color">اختيار لون مخصص</span>
+        </button>
+        <div id="hue-slider-container" class="hidden">
+           <p style="font-size: 0.8rem; opacity: 0.7; margin: 10px 0;" data-i18n="color_wheel_desc">اسحب الشريط لتغيير لون الواجهة</p>
+           <div class="hue-slider-wrapper">
+             <input type="range" min="0" max="360" value="340" id="hue-slider" class="horizontal-hue-slider">
+           </div>
+        </div>
+      </div>
+      
+      <div class="settings-section-card">
+        <div class="setting-info-header">
+          <i class="fa-solid fa-layer-group"></i>
+          <div><h4 data-i18n="layout_title">شكل وكثافة الواجهة</h4></div>
+        </div>
+        <div class="layout-options-grid" style="margin-top: 15px;">
+          <button id="layout-comfortable-btn" class="layout-btn haptic-btn" onclick="changeLayout('comfortable')">مريح</button>
+          <button id="layout-compact-btn" class="layout-btn active haptic-btn" onclick="changeLayout('compact')">مدمج</button>
+          <button id="layout-list-btn" class="layout-btn haptic-btn" onclick="changeLayout('list')">قائمة</button>
+          <button id="layout-cards-btn" class="layout-btn haptic-btn" onclick="changeLayout('cards')">كروت</button>
+          <button id="layout-minimal-btn" class="layout-btn haptic-btn" onclick="changeLayout('minimal')">بسيط</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- قسم حول التطبيق -->
+    <section id="developer-page" class="dashboard-view hidden">
+      <div class="top-actions">
+        <button class="back-btn btn-nav-home haptic-btn" onclick="backToHome()"><i class="fa-solid fa-house"></i> <span data-i18n="home">الرئيسية</span></button>
+      </div>
+      <div class="developer-page-card">
+        <div class="dev-avatar-img-container">
+          <img src="https://i.ibb.co/yFY29WhK/image.jpg" class="dev-main-avatar-img" alt="Ayat Logo">
+        </div>
+        <h2 data-i18n="about">حول التطبيق</h2>
+        <div class="dev-statement-box" style="text-align: right; line-height: 1.9;">
+            <h3 style="text-align: center; color: var(--primary); font-family: 'Amiri', serif; font-size: 1.4rem; margin-bottom: 15px;">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</h3>
+            <p class="dev-main-desc-text" style="text-align: justify !important; margin-bottom: 15px;">
+                تطبيق <strong>"آيات"</strong> ليس مجرد تطبيق إسلامي تقليدي، بل هو مشروع روحي متكامل ورفيقك الرقمي في زحام الحياة اليومية. صُمم بعناية فائقة ليجمع بين بساطة التصميم، وعمق المحتوى، وسلاسة الاستخدام.
+            </p>
+            <h4 style="color: var(--primary); margin-bottom: 10px; font-size: 1rem;"><i class="fa-solid fa-layer-group"></i> مميزات التطبيق:</h4>
+            <ul style="list-style-type: none; padding-right: 10px; margin-bottom: 20px; font-size: 0.9rem; color: var(--text); opacity: 0.9; display: flex; flex-direction: column; gap: 8px;">
+                <li><i class="fa-solid fa-book-open" style="color: var(--accent); margin-left: 5px;"></i> <strong>القرآن الكريم:</strong> قراءة واستماع مع حفظ تلقائي لصفحات التوقف.</li>
+                <li><i class="fa-solid fa-clock" style="color: var(--accent); margin-left: 5px;"></i> <strong>مواقيت الصلاة:</strong> دقة عالية بناءً على إحداثيات محافظتك مع عداد تنازلي.</li>
+                <li><i class="fa-solid fa-clapperboard" style="color: var(--accent); margin-left: 5px;"></i> <strong>الستوريات:</strong> تلاوات مرئية قصيرة ومؤثرة لترطيب مسمعك.</li>
+                <li><i class="fa-solid fa-hands-praying" style="color: var(--accent); margin-left: 5px;"></i> <strong>الأذكار والأسماء الحسنى:</strong> موسوعة يومية شاملة لمعاني وتلاوات الذكر.</li>
+                <li><i class="fa-solid fa-calculator" style="color: var(--accent); margin-left: 5px;"></i> <strong>أدوات ذكية:</strong> مسبحة، حاسبة شرعية، وختمة عائلية مشتركة.</li>
+            </ul>
+            <div class="dev-credit-badge" style="text-align: center; margin-bottom: 15px;">
+                تم بناء وتطوير هذا العمل بجهود برمجية من قبل الأخ <br>
+                <span class="highlight-name" style="font-size: 1.1rem; display: block; margin-top: 5px;">حسن فاضل العوجي</span>
+            </div>
+            <p class="sadaka-jariya-text" style="font-size: 1.05rem; margin-bottom: 10px;">
+                <i class="fa-solid fa-hand-holding-heart"></i> التطبيق صدقة جارية ومجاني بالكامل.
+            </p>
+            <p style="font-size: 0.85rem; text-align: center; opacity: 0.8; color: var(--text);">
+                نسألكم الدعاء للمطور ولوالديه، ولا تتردد بمشاركة التطبيق فالدال على الخير كفاعله.
+            </p>
+        </div>
+        <div class="social-buttons-row">
+          <a href="https://www.facebook.com/share/1CizT2qohp/" target="_blank" class="social-btn facebook-blue-btn haptic-btn"><i class="fa-brands fa-facebook"></i> فيسبوك</a>
+          <a href="https://www.instagram.com/hh22f.f?igsh=MWJqajAxa3hmdXUwNw==" target="_blank" class="social-btn insta-gradient-btn haptic-btn"><i class="fa-brands fa-instagram"></i> إنستغرام</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- النوافذ المنبثقة -->
+  <div id="adhan-alert-popup" class="verse-popup-overlay hidden-popup" style="z-index: 999999;">
+    <div class="perfect-square-popup" style="text-align: center; padding: 30px 20px; border-color: var(--accent);">
+        <div class="pulsing-mosque-icon" style="font-size: 4rem; color: var(--accent); margin-bottom: 15px;">
+            <i class="fa-solid fa-mosque"></i>
+        </div>
+        <h2 style="color: var(--text); font-family: 'Amiri', serif; font-size: 2rem; margin-bottom: 5px;">حان الآن موعد الأذان</h2>
+        <p id="adhan-prayer-name" style="font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 20px;">لصلاة ...</p>
+        <p style="font-size: 0.9rem; opacity: 0.8; color: var(--text); margin-bottom: 25px;">
+            ﴿ إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَّوْقُوتًا ﴾
+        </p>
+        <button class="v-btn haptic-btn" style="background: var(--primary); color: white; width: 100%;" onclick="stopAdhan()">
+            <i class="fa-solid fa-stop"></i> إيقاف الأذان
+        </button>
+    </div>
+  </div>
+
+  <div id="verse-action-popup" class="verse-popup-overlay hidden-popup">
+    <div class="perfect-square-popup">
+      <div class="verse-text-preview">
+        <div class="quranic-top-ornament">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
+        <p id="popup-verse-text">نص الآية</p>
+        <span id="popup-verse-info">اسم السورة</span>
+      </div>
+      <div class="verse-popup-buttons">
+        <button class="v-btn btn-v-copy haptic-btn" onclick="copySelectedVerse()"><i class="fa-solid fa-copy"></i> <span data-i18n="copy">نسخ النص</span></button>
+        <button class="v-btn btn-v-close haptic-btn" onclick="closeVersePopup()"><span data-i18n="close">إغلاق</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="asma-info-popup" class="verse-popup-overlay hidden-popup">
+    <div class="perfect-square-popup" style="text-align: center;">
+      <h2 id="popup-asma-name" class="amiri-font" style="font-size: 2.5rem; margin-bottom: 5px; color: var(--primary-text);">الاسم</h2>
+      <p id="popup-asma-meaning" style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 20px; line-height: 1.5; color: var(--primary-text);">المعنى</p>
+      <div class="asma-quran-box">
+        <div class="quranic-top-ornament"><i class="fa-solid fa-book-open"></i> ذكره في القرآن الكريم</div>
+        <p id="popup-asma-ayah" style="font-family: 'Amiri'; font-size: 1.55rem; line-height: 2.2; margin: 15px 0; color: var(--text);">﴿الآية﴾</p>
+        <span id="popup-asma-surah" style="color: var(--primary); font-weight: bold; font-size: 0.95rem;">سورة - آية</span>
+      </div>
+      <div class="verse-popup-buttons" style="margin-top: 15px;">
+        <button class="v-btn btn-v-close haptic-btn" onclick="closeAsmaPopup()"><span data-i18n="close">إغلاق</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🌟 نافذة تشغيل الـ GPS 🌟 -->
+  <div id="gps-prompt-popup" class="verse-popup-overlay hidden-popup">
+    <div class="perfect-square-popup" style="text-align: center; gap: 10px; padding: 25px 20px;">
+      <div style="font-size: 3.5rem; color: var(--accent); margin-bottom: 5px;"><i class="fa-solid fa-location-dot"></i></div>
+      <h3 style="color: var(--text); font-family: 'Cairo'; margin-bottom: 5px; font-size: 1.3rem;">الموقع مغلق</h3>
+      <p style="font-size: 0.95rem; opacity: 0.8; color: var(--text); margin-bottom: 20px;">يتعذر تحديد اتجاه القبلة لأن خدمة الموقع (GPS) مغلقة في هاتفك. هل تريد الذهاب للإعدادات لتشغيلها؟</p>
+      <div class="verse-popup-buttons" style="display: flex; flex-direction: row; gap: 10px;">
+        <button class="v-btn haptic-btn" style="background: var(--primary); color: white;" onclick="openGPSSetting()"><i class="fa-solid fa-gear"></i> الذهاب للإعدادات</button>
+        <button class="v-btn haptic-btn" style="background: var(--bg); color: var(--text); border: 1px solid var(--border);" onclick="closeGPSPopup()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة التأكيد -->
+  <div id="delete-confirm-popup" class="verse-popup-overlay hidden-popup">
+    <div class="perfect-square-popup" style="text-align: center; gap: 10px; padding: 25px 20px;">
+      <div style="font-size: 3.5rem; color: #e63946; margin-bottom: 5px;"><i class="fa-solid fa-circle-exclamation"></i></div>
+      <h3 style="color: var(--text); font-family: 'Cairo'; margin-bottom: 5px; font-size: 1.3rem;">تأكيد الإجراء</h3>
+      <p id="delete-popup-msg" style="font-size: 0.95rem; opacity: 0.8; color: var(--text); margin-bottom: 20px;">هل أنت متأكد؟</p>
+      <div class="verse-popup-buttons" style="display: flex; flex-direction: row; gap: 10px;">
+        <button class="v-btn haptic-btn" style="background: #e63946; color: white;" onclick="executeDelete()"><i class="fa-solid fa-check"></i> نعم، متأكد</button>
+        <button class="v-btn haptic-btn" style="background: var(--bg); color: var(--text); border: 1px solid var(--border);" onclick="closeDeletePopup()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="download-progress-overlay" class="verse-popup-overlay hidden-popup">
+    <div class="perfect-square-popup" style="text-align: center; padding: 30px 20px; max-width: 300px; position: relative;">
+      <button onclick="cancelDownload()" style="position: absolute; top: 10px; left: 10px; background: transparent; border: none; font-size: 1.5rem; color: var(--text); opacity: 0.6; cursor: pointer;">
+        <i class="fa-solid fa-circle-xmark"></i>
+      </button>
+      <i class="fa-solid fa-cloud-arrow-down" style="font-size: 3rem; color: var(--primary); margin-bottom: 10px;"></i>
+      <h3 id="download-text" style="color: var(--text); font-family: 'Cairo'; font-size: 1.1rem; margin-bottom: 15px;">جاري التحميل... 0%</h3>
+      <div class="progress-bar-container" style="height: 8px; width: 100%;">
+        <div id="download-bar-fill" class="progress-bar-fill" style="width: 0%; background: var(--primary);"></div>
+      </div>
+      <p style="font-size: 0.75rem; opacity: 0.6; margin-top: 15px; color: var(--text);">اضغط على (X) للإلغاء</p>
+    </div>
+  </div>
+
+  <div id="update-popup-overlay" class="verse-popup-overlay hidden-popup">
+    <div class="perfect-square-popup" style="text-align: center; padding: 30px 20px; position: relative; margin: 0 auto; max-width: 320px;">
+        <i class="fa-solid fa-arrows-rotate fa-spin" style="font-size: 3.5rem; color: var(--primary); margin-bottom: 15px;"></i>
+        <h3 style="color: var(--text); font-family: 'Cairo'; margin-bottom: 10px; font-size: 1.3rem;">تحديث جديد متاح!</h3>
+        <p style="font-size: 0.95rem; opacity: 0.8; color: var(--text); margin-bottom: 20px;">لقد أطلقنا نسخة جديدة من تطبيق آيات بميزات رائعة. يرجى التحديث لضمان أفضل تجربة.</p>
+        <div class="verse-popup-buttons" style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="v-btn haptic-btn" style="background: var(--primary); color: var(--primary-text);" onclick="executeAppUpdate()">تحديث الآن</button>
+            <button class="v-btn haptic-btn" style="background: var(--bg); color: var(--text); border: 1px solid var(--border);" onclick="closeUpdatePopup()">ليس الآن</button>
+        </div>
+    </div>
+  </div>
+
+  <!-- مكتبات فايربيس -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script src="script.js?v=3.8"></script>
+</body>
+</html>
